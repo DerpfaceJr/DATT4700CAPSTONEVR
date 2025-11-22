@@ -2067,7 +2067,7 @@ Transform:
   m_GameObject: {fileID: 287719871}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.5, y: 1.25, z: 0}
+  m_LocalPosition: {x: -2.5, y: 0, z: 0}
   m_LocalScale: {x: 0.1, y: 2.5, z: 5}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2520,7 +2520,7 @@ Transform:
   m_GameObject: {fileID: 377611082}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.716, y: 1, z: 0}
+  m_LocalPosition: {x: -0.716, y: 0.5, z: 0}
   m_LocalScale: {x: 0.3, y: 0.3, z: 0.3}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3138,7 +3138,7 @@ Transform:
   m_GameObject: {fileID: 444927955}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: 0.703}
+  m_LocalPosition: {x: 0, y: 0.5, z: 0.703}
   m_LocalScale: {x: 0.3, y: 0.3, z: 0.3}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3712,7 +3712,7 @@ Transform:
   m_GameObject: {fileID: 484048408}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.697, y: 1, z: 0}
+  m_LocalPosition: {x: 0.697, y: 0.5, z: 0}
   m_LocalScale: {x: 0.3, y: 0.3, z: 0.3}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5458,11 +5458,11 @@ PhysicsMaterial:
   m_PrefabAsset: {fileID: 0}
   m_Name: 
   serializedVersion: 2
-  m_DynamicFriction: 0.6
-  m_StaticFriction: 0.6
-  m_Bounciness: 0
+  m_DynamicFriction: 0.3
+  m_StaticFriction: 0.3
+  m_Bounciness: 0.8
   m_FrictionCombine: 0
-  m_BounceCombine: 0
+  m_BounceCombine: 1
 --- !u!1 &796325424
 GameObject:
   m_ObjectHideFlags: 0
@@ -6002,6 +6002,7 @@ GameObject:
   - component: {fileID: 900839338}
   - component: {fileID: 900839344}
   - component: {fileID: 900839345}
+  - component: {fileID: 900839346}
   m_Layer: 0
   m_Name: PhysicsBall3
   m_TagString: Untagged
@@ -6055,9 +6056,9 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!23 &900839340
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -6205,6 +6206,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BallRespawner
   respawnDistance: 3
   respawnDelay: 0.5
+--- !u!114 &900839346
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 900839336}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c3eca1cdac91254b9a6392800054a63, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bounciness: 0.8
+  friction: 0.3
 --- !u!1 &905439656
 GameObject:
   m_ObjectHideFlags: 0
@@ -6566,6 +6581,7 @@ GameObject:
   - component: {fileID: 964060295}
   - component: {fileID: 964060301}
   - component: {fileID: 964060302}
+  - component: {fileID: 964060303}
   m_Layer: 0
   m_Name: PhysicsBall1
   m_TagString: Untagged
@@ -6619,9 +6635,9 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!23 &964060297
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -6708,7 +6724,7 @@ Transform:
   m_GameObject: {fileID: 964060293}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1, y: 1.5, z: -1}
+  m_LocalPosition: {x: -1, y: 0.5, z: -1}
   m_LocalScale: {x: 0.2, y: 0.2, z: 0.2}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6769,6 +6785,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BallRespawner
   respawnDistance: 3
   respawnDelay: 0.5
+--- !u!114 &964060303
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 964060293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c3eca1cdac91254b9a6392800054a63, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bounciness: 0.8
+  friction: 0.3
 --- !u!134 &970803660
 PhysicsMaterial:
   m_ObjectHideFlags: 0
@@ -8266,7 +8296,7 @@ Transform:
   m_GameObject: {fileID: 1244838900}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.5, y: 1.25, z: 0}
+  m_LocalPosition: {x: 2.5, y: 0, z: 0}
   m_LocalScale: {x: 0.1, y: 2.5, z: 5}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -9001,7 +9031,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!23 &1416751049
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -10185,7 +10215,7 @@ Transform:
   m_GameObject: {fileID: 1545370137}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.25, z: 2.5}
+  m_LocalPosition: {x: 0, y: 0, z: 2.5}
   m_LocalScale: {x: 5, y: 2.5, z: 0.1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -11251,11 +11281,11 @@ PhysicsMaterial:
   m_PrefabAsset: {fileID: 0}
   m_Name: 
   serializedVersion: 2
-  m_DynamicFriction: 0.6
-  m_StaticFriction: 0.6
-  m_Bounciness: 0
+  m_DynamicFriction: 0.3
+  m_StaticFriction: 0.3
+  m_Bounciness: 0.8
   m_FrictionCombine: 0
-  m_BounceCombine: 0
+  m_BounceCombine: 1
 --- !u!1 &1696639821
 GameObject:
   m_ObjectHideFlags: 0
@@ -11441,7 +11471,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 15b1d5ff3d274694e8d0c6cb466a4ae6, type: 2}
+  - {fileID: 2100000, guid: cba6de8f95784c01be2745c71b044fae, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -12902,11 +12932,11 @@ PhysicsMaterial:
   m_PrefabAsset: {fileID: 0}
   m_Name: ' (Instance)'
   serializedVersion: 2
-  m_DynamicFriction: 0.6
-  m_StaticFriction: 0.6
-  m_Bounciness: 0
+  m_DynamicFriction: 0.3
+  m_StaticFriction: 0.3
+  m_Bounciness: 0.8
   m_FrictionCombine: 0
-  m_BounceCombine: 0
+  m_BounceCombine: 1
 --- !u!1 &1967771073
 GameObject:
   m_ObjectHideFlags: 0
@@ -13485,7 +13515,7 @@ Transform:
   m_GameObject: {fileID: 2054094726}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.25, z: -2.5}
+  m_LocalPosition: {x: 0, y: 0, z: -2.5}
   m_LocalScale: {x: 5, y: 2.5, z: 0.1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -13950,6 +13980,7 @@ GameObject:
   - component: {fileID: 2145329318}
   - component: {fileID: 2145329317}
   - component: {fileID: 2145329323}
+  - component: {fileID: 2145329324}
   m_Layer: 0
   m_Name: PhysicsBall2
   m_TagString: Untagged
@@ -14003,9 +14034,9 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!23 &2145329319
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -14092,7 +14123,7 @@ Transform:
   m_GameObject: {fileID: 2145329315}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1, y: 1.5, z: 1}
+  m_LocalPosition: {x: 1, y: 0.5, z: 1}
   m_LocalScale: {x: 0.2, y: 0.2, z: 0.2}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -14139,6 +14170,20 @@ MonoBehaviour:
   _movementProvider: {fileID: 0}
   _handAligment: 1
   _handGrabPoses: []
+--- !u!114 &2145329324
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2145329315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c3eca1cdac91254b9a6392800054a63, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bounciness: 0.8
+  friction: 0.3
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
