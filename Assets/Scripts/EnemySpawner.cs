@@ -48,7 +48,20 @@ public class EnemySpawner : MonoBehaviour
     }
     
     /// <summary>
-    /// Spawn enemies for a round
+    /// Spawn a single enemy for a round
+    /// </summary>
+    public GameObject SpawnSingleEnemy(int enemyIndex, List<MovementFrame> movementData, bool isFirstRound)
+    {
+        GameObject enemy = CreateEnemy(enemyIndex, movementData, isFirstRound);
+        if (enemy != null)
+        {
+            activeEnemies.Add(enemy);
+        }
+        return enemy;
+    }
+    
+    /// <summary>
+    /// Spawn enemies for a round (legacy method - kept for compatibility)
     /// </summary>
     public List<GameObject> SpawnEnemies(int enemyCount, List<MovementFrame> movementData, bool isFirstRound)
     {
@@ -81,13 +94,13 @@ public class EnemySpawner : MonoBehaviour
         {
             // Instantiate from prefab
             enemy = Instantiate(enemyPrefab);
-            enemy.name = $"Enemy_{index + 1}";
+            enemy.name = $"Enemy_Round{index + 1}";
         }
         else
         {
             // Fallback: Create procedurally (for backwards compatibility)
             enemy = CreateEnemyProcedurally();
-            enemy.name = $"Enemy_{index + 1}";
+            enemy.name = $"Enemy_Round{index + 1}";
         }
         
         // Ensure required components exist
@@ -308,7 +321,20 @@ public class EnemySpawner : MonoBehaviour
     /// </summary>
     public List<GameObject> GetActiveEnemies()
     {
+        // Remove null enemies before returning
+        activeEnemies.RemoveAll(e => e == null);
         return new List<GameObject>(activeEnemies);
+    }
+    
+    /// <summary>
+    /// Remove an enemy from the active list (called when enemy is destroyed)
+    /// </summary>
+    public void RemoveEnemy(GameObject enemy)
+    {
+        if (activeEnemies.Contains(enemy))
+        {
+            activeEnemies.Remove(enemy);
+        }
     }
     
     /// <summary>

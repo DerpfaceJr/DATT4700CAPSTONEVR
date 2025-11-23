@@ -32,7 +32,7 @@ public class RoundManager : MonoBehaviour
     public float deathYThreshold = -10f;
     
     private List<GameObject> currentEnemies = new List<GameObject>();
-    private List<MovementFrame> previousRoundMovements = new List<MovementFrame>();
+    private Dictionary<int, List<MovementFrame>> roundMovementData = new Dictionary<int, List<MovementFrame>>();
     private bool isRoundActive = false;
     private bool gameOver = false;
     
@@ -110,43 +110,57 @@ public class RoundManager : MonoBehaviour
             playerRespawner.RespawnPlayer();
         }
         
-        // Clear previous round data
-        currentEnemies.Clear();
-        
-        // Determine enemy count (round number = enemy count)
-        // Round 1 = 1 enemy, Round 2 = 2 enemies, Round 5 = 5 enemies, etc.
-        int enemyCount = currentRound;
-        
-        if (debugMode)
-        {
-            Debug.Log($"Spawning {enemyCount} enemies for round {currentRound}");
-            Debug.Log($"Movement data available: {previousRoundMovements != null && previousRoundMovements.Count > 0} ({previousRoundMovements?.Count ?? 0} frames)");
-        }
+        // Remove null enemies (destroyed)
+        currentEnemies.RemoveAll(e => e == null);
         
         // Determine if this is the first round
         bool isFirstRound = (currentRound == 1);
         
-        // Spawn enemies
+        if (isFirstRound)
+        {
+            // Round 1: Clear all enemies and spawn 1 static enemy
+            if (enemySpawner != null)
+            {
+                enemySpawner.ClearEnemies();
+            }
+            currentEnemies.Clear();
+        }
+        
+        // Get movement data for the previous round (to assign to new enemy)
+        List<MovementFrame> previousRoundMovements = null;
+        if (currentRound > 1 && roundMovementData.ContainsKey(currentRound - 1))
+        {
+            previousRoundMovements = roundMovementData[currentRound - 1];
+        }
+        
+        if (debugMode)
+        {
+            Debug.Log($"Round {currentRound}: Current enemies: {currentEnemies.Count}, Previous round movements: {(previousRoundMovements != null ? previousRoundMovements.Count : 0)} frames");
+        }
+        
+        // Spawn 1 new enemy for this round
         if (enemySpawner != null)
         {
-            currentEnemies = enemySpawner.SpawnEnemies(
-                enemyCount,
+            GameObject newEnemy = enemySpawner.SpawnSingleEnemy(
+                currentRound - 1, // Index for this enemy (0-based)
                 previousRoundMovements,
                 isFirstRound
             );
             
-            if (debugMode)
+            if (newEnemy != null)
             {
-                Debug.Log($"Successfully spawned {currentEnemies.Count} enemies");
-            }
-            
-            // Subscribe to enemy death events
-            foreach (GameObject enemy in currentEnemies)
-            {
-                EnemyController controller = enemy.GetComponent<EnemyController>();
+                currentEnemies.Add(newEnemy);
+                
+                // Subscribe to enemy death event
+                EnemyController controller = newEnemy.GetComponent<EnemyController>();
                 if (controller != null)
                 {
                     controller.OnEnemyDeath += OnEnemyDefeated;
+                }
+                
+                if (debugMode)
+                {
+                    Debug.Log($"Spawned new enemy for round {currentRound}. Total enemies: {currentEnemies.Count}");
                 }
             }
         }
@@ -207,18 +221,21 @@ public class RoundManager : MonoBehaviour
             Debug.Log($"=== Round {currentRound} Complete! ===");
         }
         
-        // Stop recording and save movement data for next round
+        // Stop recording and save movement data for this round
         if (movementRecorder != null)
         {
-            previousRoundMovements = movementRecorder.StopRecording();
+            List<MovementFrame> thisRoundMovements = movementRecorder.StopRecording();
             
-            if (debugMode)
+            // Store movement data for this round (will be used by next round's new enemy)
+            if (thisRoundMovements != null && thisRoundMovements.Count > 0)
             {
-                Debug.Log($"Recorded {previousRoundMovements.Count} movement frames for next round");
-                if (previousRoundMovements.Count > 0)
+                roundMovementData[currentRound] = thisRoundMovements;
+                
+                if (debugMode)
                 {
-                    Debug.Log($"First frame: pos={previousRoundMovements[0].position}, time={previousRoundMovements[0].timestamp}");
-                    Debug.Log($"Last frame: pos={previousRoundMovements[previousRoundMovements.Count - 1].position}, time={previousRoundMovements[previousRoundMovements.Count - 1].timestamp}");
+                    Debug.Log($"Recorded {thisRoundMovements.Count} movement frames for round {currentRound}");
+                    Debug.Log($"First frame: pos={thisRoundMovements[0].position}, time={thisRoundMovements[0].timestamp}");
+                    Debug.Log($"Last frame: pos={thisRoundMovements[thisRoundMovements.Count - 1].position}, time={thisRoundMovements[thisRoundMovements.Count - 1].timestamp}");
                 }
             }
         }
@@ -259,7 +276,7 @@ public class RoundManager : MonoBehaviour
     {
         gameOver = false;
         currentRound = 1;
-        previousRoundMovements.Clear();
+        roundMovementData.Clear();
         
         // Clear enemies
         if (enemySpawner != null)

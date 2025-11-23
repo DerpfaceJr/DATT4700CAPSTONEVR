@@ -88,3 +88,4 @@ After setup, verify:
 6. Throw objects at enemy to defeat it
 7. Round 2 should start with 2 enemies replaying your movements
 
+
