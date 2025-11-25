@@ -5,13 +5,14 @@ using System.Collections.Generic;
 /// <summary>
 /// VR Grab and Throw script for Meta Quest controllers
 /// Allows picking up and throwing objects in VR
+/// Works with Quest 3 controllers and cross-platform (Windows/Mac)
 /// Attach this to controller GameObjects (LeftHandAnchor, RightHandAnchor, or Controller objects)
 /// </summary>
 public class VRGrabThrow : MonoBehaviour
 {
     [Header("Grab Settings")]
     [Tooltip("Distance at which objects can be grabbed")]
-    public float grabDistance = 2.0f;
+    public float grabDistance = 0.5f; // Increased for better usability with balls
     
     [Tooltip("Force multiplier for throwing")]
     public float throwForce = 1.0f;
@@ -19,9 +20,16 @@ public class VRGrabThrow : MonoBehaviour
     [Tooltip("Layer mask for grabbable objects (leave as Everything to grab all objects)")]
     public LayerMask grabbableLayer = -1;
     
+    [Tooltip("Minimum grip pressure to grab (0-1, Quest controllers use analog grip)")]
+    [Range(0.1f, 1.0f)]
+    public float gripThreshold = 0.5f;
+    
     [Header("Controller Settings")]
     [Tooltip("Which hand this controller is for (auto-detected if not set)")]
     public bool isRightHand = true;
+    
+    [Tooltip("Enable debug logging")]
+    public bool debugMode = false;
     
     private Rigidbody grabbedObject = null;
     private Transform grabPoint = null;
@@ -31,6 +39,10 @@ public class VRGrabThrow : MonoBehaviour
     private Vector3 currentVelocity;
     private Vector3[] velocityHistory = new Vector3[5];
     private int velocityIndex = 0;
+    private float lastGripValue = 0f;
+    private float lastTriggerValue = 0f;
+    private int deviceInitAttempts = 0;
+    private const int MAX_DEVICE_INIT_ATTEMPTS = 10;
     
     void Start()
     {
@@ -53,6 +65,9 @@ public class VRGrabThrow : MonoBehaviour
         
         // Initialize controller device
         InitializeController();
+        
+        // Subscribe to device connection events for better controller detection
+        InputDevices.deviceConnected += OnDeviceConnected;
         
         // Initialize velocity tracking
         previousPosition = transform.position;
@@ -80,39 +95,104 @@ public class VRGrabThrow : MonoBehaviour
         if (controllers.Count > 0)
         {
             controllerDevice = controllers[0];
+            if (debugMode)
+            {
+                Debug.Log($"[VRGrabThrow] Initialized {(isRightHand ? "Right" : "Left")} controller: {controllerDevice.name}");
+            }
+            deviceInitAttempts = 0;
+        }
+        else
+        {
+            deviceInitAttempts++;
+            if (deviceInitAttempts < MAX_DEVICE_INIT_ATTEMPTS && debugMode)
+            {
+                Debug.LogWarning($"[VRGrabThrow] {(isRightHand ? "Right" : "Left")} controller not found. Attempt {deviceInitAttempts}/{MAX_DEVICE_INIT_ATTEMPTS}");
+            }
+        }
+    }
+    
+    void OnDestroy()
+    {
+        // Unsubscribe from events
+        InputDevices.deviceConnected -= OnDeviceConnected;
+    }
+    
+    void OnDeviceConnected(InputDevice device)
+    {
+        // Re-initialize if this is our controller
+        if ((device.characteristics & InputDeviceCharacteristics.Controller) != 0)
+        {
+            bool isRightController = (device.characteristics & InputDeviceCharacteristics.Right) != 0;
+            bool isLeftController = (device.characteristics & InputDeviceCharacteristics.Left) != 0;
+            
+            if ((isRightHand && isRightController) || (!isRightHand && isLeftController))
+            {
+                controllerDevice = device;
+                deviceInitAttempts = 0;
+                if (debugMode)
+                {
+                    Debug.Log($"[VRGrabThrow] {(isRightHand ? "Right" : "Left")} controller connected: {device.name}");
+                }
+            }
         }
     }
     
     void Update()
     {
-        // Re-initialize if device lost
+        // Re-initialize if device lost (with retry limit and periodic attempts)
         if (!controllerDevice.isValid)
         {
-            InitializeController();
+            if (deviceInitAttempts < MAX_DEVICE_INIT_ATTEMPTS)
+            {
+                // Try to re-initialize every second
+                if (Time.frameCount % 60 == 0) // Approximately once per second at 60fps
+                {
+                    InitializeController();
+                }
+            }
+            else if (deviceInitAttempts == MAX_DEVICE_INIT_ATTEMPTS && debugMode)
+            {
+                Debug.LogWarning($"[VRGrabThrow] {(isRightHand ? "Right" : "Left")} controller not found after {MAX_DEVICE_INIT_ATTEMPTS} attempts. Enable Debug Mode and check controller connection.");
+                deviceInitAttempts++; // Prevent spam
+            }
         }
         
         if (!controllerDevice.isValid) return;
         
-        // Check for grab input (back button - B on right controller, Y on left controller)
+        // Check for grab input - Quest 3 uses analog grip and trigger
         bool backButtonPressed = false;
         bool primaryButtonPressed = false;
-        bool gripPressed = false;
-        bool triggerPressed = false;
+        bool gripButtonPressed = false;
+        bool triggerButtonPressed = false;
+        float gripValue = 0f;
+        float triggerValue = 0f;
         
+        // Try to get button states
         controllerDevice.TryGetFeatureValue(CommonUsages.secondaryButton, out backButtonPressed);
         controllerDevice.TryGetFeatureValue(CommonUsages.primaryButton, out primaryButtonPressed);
-        controllerDevice.TryGetFeatureValue(CommonUsages.gripButton, out gripPressed);
-        controllerDevice.TryGetFeatureValue(CommonUsages.triggerButton, out triggerPressed);
+        controllerDevice.TryGetFeatureValue(CommonUsages.gripButton, out gripButtonPressed);
+        controllerDevice.TryGetFeatureValue(CommonUsages.triggerButton, out triggerButtonPressed);
         
-        // Use back button, but also allow grip/trigger as fallback
-        bool grabInput = backButtonPressed || gripPressed || triggerPressed;
+        // Try to get analog values (Quest 3 controllers support analog grip/trigger)
+        controllerDevice.TryGetFeatureValue(CommonUsages.grip, out gripValue);
+        controllerDevice.TryGetFeatureValue(CommonUsages.trigger, out triggerValue);
+        
+        // Use analog values if available, otherwise fall back to boolean
+        // Improved: Check if analog value is very small (near zero) and use boolean as fallback
+        bool gripActive = gripValue > gripThreshold || (gripButtonPressed && gripValue <= 0.01f);
+        bool triggerActive = triggerValue > 0.3f || triggerButtonPressed;
+        
+        // Primary grab input: Grip button (analog or boolean)
+        // Secondary: Trigger or back button
+        bool grabInput = gripActive || triggerActive || backButtonPressed;
         
         // Debug logging (only log when button is pressed to avoid spam)
-        if (backButtonPressed || primaryButtonPressed || gripPressed || triggerPressed)
+        if (debugMode && (gripActive || triggerActive || backButtonPressed || primaryButtonPressed))
         {
-            Debug.Log($"[VRGrabThrow] Button pressed - Back: {backButtonPressed}, Primary: {primaryButtonPressed}, Grip: {gripPressed}, Trigger: {triggerPressed}");
+            Debug.Log($"[VRGrabThrow] {(isRightHand ? "Right" : "Left")} - Grip: {gripValue:F2} (thresh: {gripThreshold}), Trigger: {triggerValue:F2}, Back: {backButtonPressed}, Primary: {primaryButtonPressed}");
         }
         
+        // Handle grab/release
         if (grabInput && !isGrabbing)
         {
             TryGrab();
@@ -129,94 +209,169 @@ public class VRGrabThrow : MonoBehaviour
         }
         
         // Calculate velocity for throwing (use average of recent velocities for smoother throwing)
-        Vector3 frameVelocity = (transform.position - previousPosition) / Time.deltaTime;
-        velocityHistory[velocityIndex] = frameVelocity;
-        velocityIndex = (velocityIndex + 1) % velocityHistory.Length;
-        
-        // Calculate average velocity
-        Vector3 avgVelocity = Vector3.zero;
-        for (int i = 0; i < velocityHistory.Length; i++)
+        if (Time.deltaTime > 0)
         {
-            avgVelocity += velocityHistory[i];
+            Vector3 frameVelocity = (transform.position - previousPosition) / Time.deltaTime;
+            velocityHistory[velocityIndex] = frameVelocity;
+            velocityIndex = (velocityIndex + 1) % velocityHistory.Length;
+            
+            // Calculate average velocity
+            Vector3 avgVelocity = Vector3.zero;
+            for (int i = 0; i < velocityHistory.Length; i++)
+            {
+                avgVelocity += velocityHistory[i];
+            }
+            currentVelocity = avgVelocity / velocityHistory.Length;
         }
-        currentVelocity = avgVelocity / velocityHistory.Length;
         
         previousPosition = transform.position;
+        lastGripValue = gripValue;
+        lastTriggerValue = triggerValue;
     }
     
     void TryGrab()
     {
-        // Try sphere cast first (better for grabbing objects)
-        Collider[] colliders = Physics.OverlapSphere(transform.position, grabDistance, grabbableLayer);
-        
-        Debug.Log($"[VRGrabThrow] TryGrab - Position: {transform.position}, Grab Distance: {grabDistance}, Found {colliders.Length} colliders");
-        
-        // If no objects found with sphere cast, try raycast
-        if (colliders.Length == 0)
+        // Safety check
+        if (grabPoint == null)
         {
-            RaycastHit hit;
-            if (Physics.Raycast(transform.position, transform.forward, out hit, grabDistance, grabbableLayer))
+            if (debugMode)
             {
-                Debug.Log($"[VRGrabThrow] Raycast hit: {hit.collider.name}");
-                Rigidbody rb = hit.collider.GetComponent<Rigidbody>();
-                if (rb != null && !rb.isKinematic && rb != grabbedObject)
-                {
-                    Debug.Log($"[VRGrabThrow] Grabbing via raycast: {rb.name}");
-                    GrabObject(rb);
-                    return;
-                }
+                Debug.LogWarning("[VRGrabThrow] Grab point is null!");
             }
-            else
+            return;
+        }
+        
+        // Use multiple detection methods for better reliability
+        Rigidbody targetRb = null;
+        float closestDistance = float.MaxValue;
+        
+        // Method 1: OverlapSphere at grab point (best for close objects like balls)
+        Collider[] colliders = Physics.OverlapSphere(grabPoint.position, grabDistance, grabbableLayer);
+        
+        if (debugMode)
+        {
+            Debug.Log($"[VRGrabThrow] TryGrab - Position: {grabPoint.position}, Grab Distance: {grabDistance}, Found {colliders.Length} colliders");
+        }
+        
+        // Check all colliders found in sphere
+        foreach (Collider col in colliders)
+        {
+            if (col == null) continue;
+            
+            Rigidbody rb = col.attachedRigidbody;
+            if (rb == null)
             {
-                Debug.Log($"[VRGrabThrow] No objects in grab range");
+                // Try getting from parent if collider doesn't have one
+                rb = col.GetComponentInParent<Rigidbody>();
+            }
+            
+            if (rb != null && rb != grabbedObject)
+            {
+                // Allow grabbing kinematic objects (they'll be made non-kinematic)
+                float distance = Vector3.Distance(grabPoint.position, rb.transform.position);
+                
+                if (debugMode)
+                {
+                    Debug.Log($"[VRGrabThrow] Found object: {rb.name}, Distance: {distance:F3}, isKinematic: {rb.isKinematic}");
+                }
+                
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    targetRb = rb;
+                }
             }
         }
-        else
+        
+        // Method 2: Raycast forward if no object found (for reaching out)
+        if (targetRb == null)
         {
-            // Find the closest grabbable object
-            Rigidbody closestRb = null;
-            float closestDistance = float.MaxValue;
+            RaycastHit[] hits = Physics.RaycastAll(grabPoint.position, transform.forward, grabDistance * 2f, grabbableLayer);
             
-            foreach (Collider col in colliders)
+            foreach (RaycastHit hit in hits)
             {
-                Rigidbody rb = col.GetComponent<Rigidbody>();
-                if (rb != null)
+                if (hit.collider == null) continue;
+                
+                Rigidbody rb = hit.collider.attachedRigidbody;
+                if (rb == null)
                 {
-                    Debug.Log($"[VRGrabThrow] Found Rigidbody on {col.name}, isKinematic: {rb.isKinematic}");
-                    if (!rb.isKinematic && rb != grabbedObject)
+                    rb = hit.collider.GetComponentInParent<Rigidbody>();
+                }
+                
+                if (rb != null && rb != grabbedObject)
+                {
+                    float distance = hit.distance;
+                    if (distance < closestDistance)
                     {
-                        float distance = Vector3.Distance(transform.position, rb.transform.position);
-                        Debug.Log($"[VRGrabThrow] Distance to {col.name}: {distance}");
-                        if (distance < closestDistance)
-                        {
-                            closestDistance = distance;
-                            closestRb = rb;
-                        }
+                        closestDistance = distance;
+                        targetRb = rb;
                     }
                 }
-                else
+            }
+        }
+        
+        // Method 3: Try sphere cast for better detection
+        if (targetRb == null)
+        {
+            RaycastHit[] sphereHits = Physics.SphereCastAll(
+                grabPoint.position, 
+                grabDistance * 0.5f, 
+                transform.forward, 
+                grabDistance, 
+                grabbableLayer
+            );
+            
+            foreach (RaycastHit hit in sphereHits)
+            {
+                if (hit.collider == null) continue;
+                
+                Rigidbody rb = hit.collider.attachedRigidbody;
+                if (rb == null)
                 {
-                    Debug.Log($"[VRGrabThrow] No Rigidbody on {col.name}");
+                    rb = hit.collider.GetComponentInParent<Rigidbody>();
+                }
+                
+                if (rb != null && rb != grabbedObject)
+                {
+                    float distance = hit.distance;
+                    if (distance < closestDistance)
+                    {
+                        closestDistance = distance;
+                        targetRb = rb;
+                    }
                 }
             }
-            
-            if (closestRb != null)
+        }
+        
+        // Grab the found object
+        if (targetRb != null)
+        {
+            if (debugMode)
             {
-                Debug.Log($"[VRGrabThrow] Grabbing closest object: {closestRb.name}");
-                GrabObject(closestRb);
+                Debug.Log($"[VRGrabThrow] Grabbing object: {targetRb.name} at distance {closestDistance:F3}");
             }
-            else
-            {
-                Debug.Log($"[VRGrabThrow] No valid grabbable object found");
-            }
+            GrabObject(targetRb);
+        }
+        else if (debugMode)
+        {
+            Debug.Log($"[VRGrabThrow] No grabbable object found in range");
         }
     }
     
     void GrabObject(Rigidbody rb)
     {
-        Debug.Log($"[VRGrabThrow] GrabObject called for {rb.name}");
+        if (rb == null) return;
+        
+        if (debugMode)
+        {
+            Debug.Log($"[VRGrabThrow] GrabObject called for {rb.name}");
+        }
+        
         grabbedObject = rb;
         isGrabbing = true;
+        
+        // Store original kinematic state
+        bool wasKinematic = grabbedObject.isKinematic;
         
         // Make object kinematic while grabbed for smooth movement
         grabbedObject.isKinematic = true;
@@ -224,7 +379,27 @@ public class VRGrabThrow : MonoBehaviour
         grabbedObject.transform.localPosition = Vector3.zero;
         grabbedObject.transform.localRotation = Quaternion.identity;
         
-        Debug.Log($"[VRGrabThrow] Successfully grabbed {rb.name}");
+        // Stop any existing velocity
+        #if UNITY_2023_1_OR_NEWER
+        if (grabbedObject.linearVelocity != Vector3.zero)
+        {
+            grabbedObject.linearVelocity = Vector3.zero;
+        }
+        #else
+        if (grabbedObject.velocity != Vector3.zero)
+        {
+            grabbedObject.velocity = Vector3.zero;
+        }
+        #endif
+        if (grabbedObject.angularVelocity != Vector3.zero)
+        {
+            grabbedObject.angularVelocity = Vector3.zero;
+        }
+        
+        if (debugMode)
+        {
+            Debug.Log($"[VRGrabThrow] Successfully grabbed {rb.name}");
+        }
         
         // Reset velocity tracking
         for (int i = 0; i < velocityHistory.Length; i++)
@@ -237,7 +412,7 @@ public class VRGrabThrow : MonoBehaviour
     {
         if (grabbedObject == null) return;
         
-        // Keep object at grab point
+        // Keep object at grab point with smooth following
         grabbedObject.transform.position = grabPoint.position;
         grabbedObject.transform.rotation = grabPoint.rotation;
     }
@@ -246,15 +421,38 @@ public class VRGrabThrow : MonoBehaviour
     {
         if (grabbedObject == null) return;
         
-        // Restore physics
-        grabbedObject.isKinematic = false;
-        grabbedObject.transform.SetParent(null);
+        Rigidbody rbToRelease = grabbedObject;
         
-        // Apply throw velocity (use currentVelocity which is averaged for smoother throws)
-        grabbedObject.linearVelocity = currentVelocity * throwForce;
+        // Restore physics before applying velocity
+        rbToRelease.isKinematic = false;
+        rbToRelease.transform.SetParent(null);
         
-        // Add some angular velocity for realistic spin
-        grabbedObject.angularVelocity = Random.insideUnitSphere * 5f;
+        // Calculate throw velocity based on controller movement
+        Vector3 throwVelocity = currentVelocity * throwForce;
+        
+        // Apply throw velocity (use linearVelocity for Unity 2023+, velocity for older versions)
+        #if UNITY_2023_1_OR_NEWER
+        rbToRelease.linearVelocity = throwVelocity;
+        #else
+        rbToRelease.velocity = throwVelocity;
+        #endif
+        
+        // Add some angular velocity for realistic spin (based on throw direction)
+        Vector3 spinAxis = Vector3.Cross(transform.forward, throwVelocity.normalized);
+        if (spinAxis.magnitude > 0.1f)
+        {
+            rbToRelease.angularVelocity = spinAxis.normalized * throwVelocity.magnitude * 0.5f;
+        }
+        else
+        {
+            // Fallback to random spin if no clear axis
+            rbToRelease.angularVelocity = Random.insideUnitSphere * Mathf.Min(throwVelocity.magnitude * 0.3f, 10f);
+        }
+        
+        if (debugMode)
+        {
+            Debug.Log($"[VRGrabThrow] Released {rbToRelease.name} with velocity: {throwVelocity.magnitude:F2} m/s");
+        }
         
         grabbedObject = null;
         isGrabbing = false;
@@ -264,6 +462,16 @@ public class VRGrabThrow : MonoBehaviour
     {
         // Draw grab range
         Gizmos.color = Color.yellow;
-        Gizmos.DrawRay(transform.position, transform.forward * grabDistance);
+        
+        // Draw sphere at grab point
+        Vector3 grabPos = grabPoint != null ? grabPoint.position : transform.position;
+        Gizmos.DrawWireSphere(grabPos, grabDistance);
+        
+        // Draw forward ray
+        Gizmos.DrawRay(grabPos, transform.forward * grabDistance * 2f);
+        
+        // Draw line to show grab point
+        Gizmos.color = Color.green;
+        Gizmos.DrawLine(transform.position, grabPos);
     }
 }
