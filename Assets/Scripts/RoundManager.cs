@@ -35,6 +35,7 @@ public class RoundManager : MonoBehaviour
     private Dictionary<int, List<MovementFrame>> roundMovementData = new Dictionary<int, List<MovementFrame>>();
     private bool isRoundActive = false;
     private bool gameOver = false;
+    private int enemiesSpawnedThisRound = 0; // Track how many enemies were spawned in current round
     
     // Events
     public event Action<int> OnRoundStart;
@@ -124,7 +125,10 @@ public class RoundManager : MonoBehaviour
                 enemySpawner.ClearEnemies();
             }
             currentEnemies.Clear();
+            enemiesSpawnedThisRound = 0; // Reset counter for Round 1
         }
+        // For Round 2+, keep all previous enemies alive (don't clear them)
+        // enemiesSpawnedThisRound keeps track of how many were spawned this round
         
         // Get movement data for the previous round (to assign to new enemy)
         List<MovementFrame> previousRoundMovements = null;
@@ -135,33 +139,56 @@ public class RoundManager : MonoBehaviour
         
         if (debugMode)
         {
-            Debug.Log($"Round {currentRound}: Current enemies: {currentEnemies.Count}, Previous round movements: {(previousRoundMovements != null ? previousRoundMovements.Count : 0)} frames");
+            Debug.Log($"Round {currentRound}: Existing enemies: {currentEnemies.Count}, Previous round movements: {(previousRoundMovements != null ? previousRoundMovements.Count : 0)} frames");
         }
         
-        // Spawn 1 new enemy for this round
-        if (enemySpawner != null)
+        // Spawn enemies until we have the correct number for this round
+        // Round N should have N enemies total (keeping previous ones + adding new ones)
+        int targetEnemyCount = currentRound;
+        int enemiesToSpawn = targetEnemyCount - currentEnemies.Count;
+        
+        if (debugMode && enemiesToSpawn > 0)
         {
-            GameObject newEnemy = enemySpawner.SpawnSingleEnemy(
-                currentRound - 1, // Index for this enemy (0-based)
-                previousRoundMovements,
-                isFirstRound
-            );
-            
-            if (newEnemy != null)
+            Debug.Log($"Round {currentRound}: Need {enemiesToSpawn} more enemy/enemies to reach target of {targetEnemyCount} total");
+        }
+        
+        // Spawn new enemies to reach the target count (previous enemies are kept alive)
+        if (enemySpawner != null && enemiesToSpawn > 0)
+        {
+            for (int i = 0; i < enemiesToSpawn; i++)
             {
-                currentEnemies.Add(newEnemy);
+                // Calculate index for new enemy (based on how many enemies already exist)
+                int newEnemyIndex = currentEnemies.Count;
                 
-                // Subscribe to enemy death event
-                EnemyController controller = newEnemy.GetComponent<EnemyController>();
-                if (controller != null)
-                {
-                    controller.OnEnemyDeath += OnEnemyDefeated;
-                }
+                GameObject newEnemy = enemySpawner.SpawnSingleEnemy(
+                    newEnemyIndex, // Index for this enemy (0-based, continues from existing enemies)
+                    previousRoundMovements,
+                    false // Only first enemy in round 1 is static, all others replay movements
+                );
                 
-                if (debugMode)
+                if (newEnemy != null)
                 {
-                    Debug.Log($"Spawned new enemy for round {currentRound}. Total enemies: {currentEnemies.Count}");
+                    currentEnemies.Add(newEnemy);
+                    
+                    // Subscribe to enemy death event
+                    EnemyController controller = newEnemy.GetComponent<EnemyController>();
+                    if (controller != null)
+                    {
+                        controller.OnEnemyDeath += OnEnemyDefeated;
+                    }
+                    
+                    if (debugMode)
+                    {
+                        Debug.Log($"Spawned new enemy #{newEnemyIndex + 1} for round {currentRound}. Total enemies: {currentEnemies.Count}");
+                    }
+                    
+                    enemiesSpawnedThisRound++; // Track that we spawned an enemy this round
                 }
+            }
+            
+            if (debugMode)
+            {
+                Debug.Log($"Round {currentRound}: Spawned {enemiesToSpawn} new enemy/enemies. Total enemies now: {currentEnemies.Count} (target: {targetEnemyCount})");
             }
         }
         
@@ -195,12 +222,17 @@ public class RoundManager : MonoBehaviour
     
     /// <summary>
     /// Check if round is complete (all enemies defeated)
+    /// With persistent enemies: When all enemies are killed, round completes and next round starts
+    /// New rounds will keep any surviving enemies and add new ones
     /// </summary>
     private void CheckRoundCompletion()
     {
         // Remove null enemies (destroyed)
         currentEnemies.RemoveAll(e => e == null);
         
+        // Round completes when all enemies are defeated
+        // When next round starts, it will keep any surviving enemies (if any)
+        // and spawn additional enemies to reach the round number
         if (currentEnemies.Count == 0)
         {
             CompleteRound();

@@ -62,6 +62,18 @@ public class BuildingBlockProjectile : MonoBehaviour
             // Ensure collider is not a trigger (needed for collision detection)
             col.isTrigger = false;
         }
+        
+        // Register with PlayerBallCollisionIgnore if it exists
+        RegisterWithCollisionIgnore();
+    }
+    
+    void RegisterWithCollisionIgnore()
+    {
+        PlayerBallCollisionIgnore collisionIgnore = FindObjectOfType<PlayerBallCollisionIgnore>();
+        if (collisionIgnore != null && collisionIgnore.ignoreBallCollisions)
+        {
+            collisionIgnore.AddBallToIgnore(gameObject);
+        }
     }
     
     void Update()

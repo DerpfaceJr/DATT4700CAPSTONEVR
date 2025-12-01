@@ -205,6 +205,14 @@ public class EnemySpawner : MonoBehaviour
             combatSystem = enemy.AddComponent<CombatSystem>();
             combatSystem.damageMultiplier = 1f;
             combatSystem.minDamageVelocity = 2f;
+            combatSystem.instakillEnabled = true; // Enable instakill by default
+            combatSystem.instakillMinVelocity = 0.5f; // Low threshold for easy instakills
+        }
+        else
+        {
+            // Ensure instakill is enabled on existing CombatSystem
+            combatSystem.instakillEnabled = true;
+            combatSystem.instakillMinVelocity = 0.5f;
         }
         
         // Add appropriate AI component (remove existing ones first)

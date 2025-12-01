@@ -16,6 +16,13 @@ public class CombatSystem : MonoBehaviour
     [Tooltip("Maximum damage from a single hit")]
     public float maxDamage = 50f;
     
+    [Header("Instakill Settings")]
+    [Tooltip("Enable instakill for balls/projectiles")]
+    public bool instakillEnabled = true;
+    
+    [Tooltip("Minimum velocity for instakill (lower than minDamageVelocity for easier kills)")]
+    public float instakillMinVelocity = 0.5f;
+    
     [Tooltip("Objects that have already damaged enemies (prevents multiple hits)")]
     private System.Collections.Generic.HashSet<GameObject> usedObjects = new System.Collections.Generic.HashSet<GameObject>();
     
@@ -54,33 +61,56 @@ public class CombatSystem : MonoBehaviour
         // If it's a building block projectile, use its velocity check
         if (projectile != null)
         {
-            if (!projectile.IsThrown())
-            {
-                // Projectile not thrown fast enough
-                return;
-            }
             // Use projectile's velocity magnitude for more accurate detection
             velocityMagnitude = projectile.GetVelocityMagnitude();
+            
+            // For instakill mode, use lower threshold
+            if (instakillEnabled)
+            {
+                if (velocityMagnitude < instakillMinVelocity)
+                {
+                    // Too slow for instakill
+                    return;
+                }
+            }
+            else if (!projectile.IsThrown())
+            {
+                // Projectile not thrown fast enough (normal mode)
+                return;
+            }
         }
         else
         {
             // For non-projectile objects, check minimum velocity
-            if (velocityMagnitude < minDamageVelocity) return;
+            float requiredVelocity = instakillEnabled ? instakillMinVelocity : minDamageVelocity;
+            if (velocityMagnitude < requiredVelocity) return;
         }
         
         // Find enemy controller on this GameObject (the enemy that was hit)
         EnemyController enemy = GetComponent<EnemyController>();
         if (enemy == null) return;
         
-        // Calculate damage: velocity * mass * multiplier
-        float projectileMultiplier = (projectile != null) ? projectile.damageMultiplier : 1f;
-        float damage = velocityMagnitude * rb.mass * damageMultiplier * projectileMultiplier;
-        damage = Mathf.Clamp(damage, 0f, maxDamage);
-        
-        // Apply damage
-        enemy.TakeDamage(damage);
-        
-        Debug.Log($"[CombatSystem] {collidingObject.name} hit {gameObject.name} for {damage:F1} damage (velocity: {velocityMagnitude:F2} m/s)");
+        // Check if instakill is enabled
+        if (instakillEnabled)
+        {
+            // Instakill: Deal massive damage (more than max health)
+            float instakillDamage = enemy.maxHealth * 100f; // Way more than needed to ensure instant death
+            enemy.TakeDamage(instakillDamage);
+            
+            Debug.Log($"[CombatSystem] INSTAKILL! {collidingObject.name} hit {gameObject.name} (velocity: {velocityMagnitude:F2} m/s)");
+        }
+        else
+        {
+            // Normal damage calculation: velocity * mass * multiplier
+            float projectileMultiplier = (projectile != null) ? projectile.damageMultiplier : 1f;
+            float damage = velocityMagnitude * rb.mass * damageMultiplier * projectileMultiplier;
+            damage = Mathf.Clamp(damage, 0f, maxDamage);
+            
+            // Apply damage
+            enemy.TakeDamage(damage);
+            
+            Debug.Log($"[CombatSystem] {collidingObject.name} hit {gameObject.name} for {damage:F1} damage (velocity: {velocityMagnitude:F2} m/s)");
+        }
         
         // Mark object as used
         usedObjects.Add(collidingObject);

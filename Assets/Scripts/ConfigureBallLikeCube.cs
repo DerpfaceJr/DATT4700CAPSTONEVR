@@ -52,6 +52,18 @@ public class ConfigureBallLikeCube : MonoBehaviour
         #endif
         
         lastPosition = transform.position;
+        
+        // Register with PlayerBallCollisionIgnore if it exists
+        RegisterWithCollisionIgnore();
+    }
+    
+    void RegisterWithCollisionIgnore()
+    {
+        PlayerBallCollisionIgnore collisionIgnore = FindObjectOfType<PlayerBallCollisionIgnore>();
+        if (collisionIgnore != null && collisionIgnore.ignoreBallCollisions)
+        {
+            collisionIgnore.AddBallToIgnore(gameObject);
+        }
     }
     
     void ApplyBouncyMaterial()
