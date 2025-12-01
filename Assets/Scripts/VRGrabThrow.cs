@@ -1,6 +1,9 @@
 using UnityEngine;
 using UnityEngine.XR;
 using System.Collections.Generic;
+#if UNITY_EDITOR || UNITY_ANDROID
+using Oculus.Interaction;
+#endif
 
 /// <summary>
 /// VR Grab and Throw script for Meta Quest controllers
@@ -12,7 +15,7 @@ public class VRGrabThrow : MonoBehaviour
 {
     [Header("Grab Settings")]
     [Tooltip("Distance at which objects can be grabbed")]
-    public float grabDistance = 0.5f; // Increased for better usability with balls
+    public float grabDistance = 3.0f; // Increased for better usability with balls
     
     [Tooltip("Force multiplier for throwing")]
     public float throwForce = 1.0f;
@@ -22,7 +25,7 @@ public class VRGrabThrow : MonoBehaviour
     
     [Tooltip("Minimum grip pressure to grab (0-1, Quest controllers use analog grip)")]
     [Range(0.1f, 1.0f)]
-    public float gripThreshold = 0.5f;
+    public float gripThreshold = 0.3f; // Lowered for easier grabbing
     
     [Header("Controller Settings")]
     [Tooltip("Which hand this controller is for (auto-detected if not set)")]
@@ -95,18 +98,17 @@ public class VRGrabThrow : MonoBehaviour
         if (controllers.Count > 0)
         {
             controllerDevice = controllers[0];
-            if (debugMode)
-            {
-                Debug.Log($"[VRGrabThrow] Initialized {(isRightHand ? "Right" : "Left")} controller: {controllerDevice.name}");
-            }
             deviceInitAttempts = 0;
+            // Always log controller initialization for debugging
+            Debug.Log($"[VRGrabThrow] ✓ Initialized {(isRightHand ? "Right" : "Left")} controller: {controllerDevice.name}");
         }
         else
         {
             deviceInitAttempts++;
-            if (deviceInitAttempts < MAX_DEVICE_INIT_ATTEMPTS && debugMode)
+            // Always log warnings about missing controllers (first 3 attempts only)
+            if (deviceInitAttempts <= 3)
             {
-                Debug.LogWarning($"[VRGrabThrow] {(isRightHand ? "Right" : "Left")} controller not found. Attempt {deviceInitAttempts}/{MAX_DEVICE_INIT_ATTEMPTS}");
+                Debug.LogWarning($"[VRGrabThrow] ✗ {(isRightHand ? "Right" : "Left")} controller not found. Attempt {deviceInitAttempts}/3");
             }
         }
     }
@@ -186,10 +188,10 @@ public class VRGrabThrow : MonoBehaviour
         // Secondary: Trigger or back button
         bool grabInput = gripActive || triggerActive || backButtonPressed;
         
-        // Debug logging (only log when button is pressed to avoid spam)
-        if (debugMode && (gripActive || triggerActive || backButtonPressed || primaryButtonPressed))
+        // Always log button presses when they're pressed (not just in debug mode) to help troubleshoot
+        if (gripActive || triggerActive || backButtonPressed || primaryButtonPressed)
         {
-            Debug.Log($"[VRGrabThrow] {(isRightHand ? "Right" : "Left")} - Grip: {gripValue:F2} (thresh: {gripThreshold}), Trigger: {triggerValue:F2}, Back: {backButtonPressed}, Primary: {primaryButtonPressed}");
+            Debug.Log($"[VRGrabThrow] {(isRightHand ? "Right" : "Left")} - Grip: {gripValue:F2} (thresh: {gripThreshold}), Trigger: {triggerValue:F2}, Back: {backButtonPressed}, Primary: {primaryButtonPressed}, GrabInput: {grabInput}");
         }
         
         // Handle grab/release
@@ -229,15 +231,86 @@ public class VRGrabThrow : MonoBehaviour
         lastTriggerValue = triggerValue;
     }
     
+    /// <summary>
+    /// Check if an object uses Oculus Interaction Grabbable and should be handled by Oculus system
+    /// </summary>
+    bool ShouldSkipOculusGrabbable(Rigidbody rb)
+    {
+        if (rb == null) return false;
+        
+        #if UNITY_EDITOR || UNITY_ANDROID
+        try
+        {
+            Component grabbable = rb.GetComponent("Grabbable");
+            if (grabbable == null)
+            {
+                // Search for Grabbable type
+                System.Type grabbableType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    grabbableType = assembly.GetType("Oculus.Interaction.Grabbable");
+                    if (grabbableType != null) break;
+                }
+                if (grabbableType != null)
+                {
+                    grabbable = rb.GetComponent(grabbableType);
+                }
+            }
+            
+            // If object has Grabbable component, let Oculus Interaction system handle it
+            if (grabbable != null)
+            {
+                return true;
+            }
+        }
+        catch (System.Exception) { }
+        #endif
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// Check if an object should be skipped (controller-related objects)
+    /// </summary>
+    bool ShouldSkipObject(Rigidbody rb)
+    {
+        if (rb == null) return true;
+        
+        string objName = rb.name;
+        
+        // Skip controller-related objects
+        if (objName.Contains("ControllerGrabLocation") ||
+            objName.Contains("PlayerController") ||
+            objName.Contains("HandAnchor") ||
+            objName.Contains("Camera Rig") ||
+            objName.Contains("TrackingSpace") ||
+            objName.Contains("OVRCameraRig"))
+        {
+            return true;
+        }
+        
+        // Skip if it's a child of the controller
+        Transform parent = rb.transform.parent;
+        while (parent != null)
+        {
+            if (parent.name.Contains("HandAnchor") || 
+                parent.name.Contains("Controller") ||
+                parent.name.Contains("Camera Rig"))
+            {
+                return true;
+            }
+            parent = parent.parent;
+        }
+        
+        return false;
+    }
+    
     void TryGrab()
     {
         // Safety check
         if (grabPoint == null)
         {
-            if (debugMode)
-            {
-                Debug.LogWarning("[VRGrabThrow] Grab point is null!");
-            }
+            Debug.LogError("[VRGrabThrow] Grab point is null! This should not happen.");
             return;
         }
         
@@ -245,12 +318,20 @@ public class VRGrabThrow : MonoBehaviour
         Rigidbody targetRb = null;
         float closestDistance = float.MaxValue;
         
-        // Method 1: OverlapSphere at grab point (best for close objects like balls)
-        Collider[] colliders = Physics.OverlapSphere(grabPoint.position, grabDistance, grabbableLayer);
+        // Use larger radius for better detection (declare once and reuse)
+        float detectionRadius = Mathf.Max(grabDistance, 2.0f);
         
-        if (debugMode)
+        // Method 1: OverlapSphere at grab point (best for close objects like balls)
+        Collider[] colliders = Physics.OverlapSphere(grabPoint.position, detectionRadius, grabbableLayer);
+        
+        // Always log grab attempts to help debug
+        Debug.Log($"[VRGrabThrow] TryGrab - Position: {grabPoint.position}, Detection Radius: {detectionRadius}, Found {colliders.Length} colliders");
+        
+        // Log all collider names for debugging
+        if (colliders.Length > 0 && debugMode)
         {
-            Debug.Log($"[VRGrabThrow] TryGrab - Position: {grabPoint.position}, Grab Distance: {grabDistance}, Found {colliders.Length} colliders");
+            string colliderNames = string.Join(", ", System.Array.ConvertAll(colliders, c => c != null ? c.name : "null"));
+            Debug.Log($"[VRGrabThrow] Colliders found: {colliderNames}");
         }
         
         // Check all colliders found in sphere
@@ -258,22 +339,146 @@ public class VRGrabThrow : MonoBehaviour
         {
             if (col == null) continue;
             
-            Rigidbody rb = col.attachedRigidbody;
+            Rigidbody rb = null;
+            
+            // First, check if this object has Oculus Interaction Grabbable (like BuildingBlock Cube and PhysicsBalls)
+            #if UNITY_EDITOR || UNITY_ANDROID
+            try
+            {
+                Component grabbableComponent = col.GetComponent("Grabbable");
+                if (grabbableComponent == null)
+                {
+                    // GetComponentInParent requires a Type, so we need to get the type first
+                    // Search all loaded assemblies for the Grabbable type
+                    System.Type grabbableType = null;
+                    try
+                    {
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            grabbableType = assembly.GetType("Oculus.Interaction.Grabbable");
+                            if (grabbableType != null) break;
+                        }
+                    }
+                    catch (System.Exception) { }
+                    
+                    if (grabbableType != null)
+                    {
+                        grabbableComponent = col.GetComponentInParent(grabbableType);
+                    }
+                }
+                
+                if (grabbableComponent != null)
+                {
+                    // First try to get Rigidbody from the GameObject
+                    rb = grabbableComponent.GetComponent<Rigidbody>();
+                    if (rb == null)
+                    {
+                        // Try to get Rigidbody from the GameObject the component is on
+                        rb = grabbableComponent.gameObject.GetComponent<Rigidbody>();
+                    }
+                    if (rb == null)
+                    {
+                        // Try to get Rigidbody property from Grabbable using reflection
+                        var rigidbodyProperty = grabbableComponent.GetType().GetProperty("Rigidbody", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                        if (rigidbodyProperty != null)
+                        {
+                            rb = rigidbodyProperty.GetValue(grabbableComponent) as Rigidbody;
+                        }
+                    }
+                    if (rb == null)
+                    {
+                        // Try to get Rigidbody field from Grabbable using reflection
+                        var rigidbodyField = grabbableComponent.GetType().GetField("_rigidbody", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                        if (rigidbodyField != null)
+                        {
+                            rb = rigidbodyField.GetValue(grabbableComponent) as Rigidbody;
+                        }
+                    }
+                }
+            }
+            catch (System.Exception)
+            {
+                // Oculus Interaction not available, fall through to Rigidbody check
+            }
+            #endif
+            
+            // Fallback: Check for Rigidbody directly (for objects without Grabbable component)
             if (rb == null)
             {
-                // Try getting from parent if collider doesn't have one
-                rb = col.GetComponentInParent<Rigidbody>();
+                // Try multiple methods to get Rigidbody
+                rb = col.attachedRigidbody;
+                if (rb == null)
+                {
+                    rb = col.GetComponent<Rigidbody>();
+                }
+                if (rb == null)
+                {
+                    rb = col.gameObject.GetComponent<Rigidbody>();
+                }
+                if (rb == null)
+                {
+                    // Try getting from parent if collider doesn't have one
+                    rb = col.GetComponentInParent<Rigidbody>();
+                }
             }
             
+            // If we found a Rigidbody, check if it's the closest
             if (rb != null && rb != grabbedObject)
             {
-                // Allow grabbing kinematic objects (they'll be made non-kinematic)
+                // Skip controller-related objects
+                if (ShouldSkipObject(rb))
+                {
+                    if (debugMode)
+                    {
+                        Debug.Log($"[VRGrabThrow] Skipping controller-related object: {rb.name}");
+                    }
+                    continue;
+                }
+                
+                // Skip objects that use Oculus Interaction Grabbable (let Oculus system handle them)
+                #if UNITY_EDITOR || UNITY_ANDROID
+                if (ShouldSkipOculusGrabbable(rb))
+                {
+                    if (debugMode)
+                    {
+                        Debug.Log($"[VRGrabThrow] Skipping {rb.name} - using Oculus Interaction system (like cube)");
+                    }
+                    continue;
+                }
+                #endif
+                
                 float distance = Vector3.Distance(grabPoint.position, rb.transform.position);
                 
-                if (debugMode)
+                #if UNITY_EDITOR || UNITY_ANDROID
+                bool hasGrabbable = false;
+                try
                 {
-                    Debug.Log($"[VRGrabThrow] Found object: {rb.name}, Distance: {distance:F3}, isKinematic: {rb.isKinematic}");
+                    hasGrabbable = col.GetComponent("Grabbable") != null;
+                    if (!hasGrabbable)
+                    {
+                        // Search all loaded assemblies for the Grabbable type
+                        System.Type grabbableType = null;
+                        try
+                        {
+                            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                            {
+                                grabbableType = assembly.GetType("Oculus.Interaction.Grabbable");
+                                if (grabbableType != null) break;
+                            }
+                        }
+                        catch (System.Exception) { }
+                        
+                        if (grabbableType != null)
+                        {
+                            hasGrabbable = col.GetComponentInParent(grabbableType) != null;
+                        }
+                    }
                 }
+                catch (System.Exception) { }
+                Debug.Log($"[VRGrabThrow] Found {(hasGrabbable ? "Grabbable" : "Rigidbody")} object: {rb.name}, Distance: {distance:F3}, isKinematic: {rb.isKinematic}");
+                #else
+                Debug.Log($"[VRGrabThrow] Found Rigidbody object: {rb.name}, Distance: {distance:F3}, isKinematic: {rb.isKinematic}");
+                #endif
                 
                 if (distance < closestDistance)
                 {
@@ -286,20 +491,101 @@ public class VRGrabThrow : MonoBehaviour
         // Method 2: Raycast forward if no object found (for reaching out)
         if (targetRb == null)
         {
-            RaycastHit[] hits = Physics.RaycastAll(grabPoint.position, transform.forward, grabDistance * 2f, grabbableLayer);
+            RaycastHit[] hits = Physics.RaycastAll(grabPoint.position, transform.forward, detectionRadius * 2f, grabbableLayer);
             
             foreach (RaycastHit hit in hits)
             {
                 if (hit.collider == null) continue;
                 
-                Rigidbody rb = hit.collider.attachedRigidbody;
+                Rigidbody rb = null;
+                
+                // Check for Grabbable component first (like BuildingBlock Cube)
+                #if UNITY_EDITOR || UNITY_ANDROID
+                try
+                {
+                    Component grabbableComponent = hit.collider.GetComponent("Grabbable");
+                    if (grabbableComponent == null)
+                    {
+                        // Search all loaded assemblies for the Grabbable type
+                        System.Type grabbableType = null;
+                        try
+                        {
+                            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                            {
+                                grabbableType = assembly.GetType("Oculus.Interaction.Grabbable");
+                                if (grabbableType != null) break;
+                            }
+                        }
+                        catch (System.Exception) { }
+                        
+                        if (grabbableType != null)
+                        {
+                            grabbableComponent = hit.collider.GetComponentInParent(grabbableType);
+                        }
+                    }
+                    
+                    if (grabbableComponent != null)
+                    {
+                        rb = grabbableComponent.GetComponent<Rigidbody>();
+                        if (rb == null)
+                        {
+                            var rigidbodyProperty = grabbableComponent.GetType().GetProperty("Rigidbody");
+                            if (rigidbodyProperty != null)
+                            {
+                                rb = rigidbodyProperty.GetValue(grabbableComponent) as Rigidbody;
+                            }
+                        }
+                    }
+                }
+                catch (System.Exception)
+                {
+                    // Oculus Interaction not available, fall through to Rigidbody check
+                }
+                #endif
+                
+                // Fallback: Check for Rigidbody directly
                 if (rb == null)
                 {
-                    rb = hit.collider.GetComponentInParent<Rigidbody>();
+                    // Try multiple methods to get Rigidbody
+                    rb = hit.collider.attachedRigidbody;
+                    if (rb == null)
+                    {
+                        rb = hit.collider.GetComponent<Rigidbody>();
+                    }
+                    if (rb == null)
+                    {
+                        rb = hit.collider.gameObject.GetComponent<Rigidbody>();
+                    }
+                    if (rb == null)
+                    {
+                        rb = hit.collider.GetComponentInParent<Rigidbody>();
+                    }
                 }
                 
                 if (rb != null && rb != grabbedObject)
                 {
+                    // Skip controller-related objects
+                    if (ShouldSkipObject(rb))
+                    {
+                        if (debugMode)
+                        {
+                            Debug.Log($"[VRGrabThrow] Skipping controller-related object: {rb.name}");
+                        }
+                        continue;
+                    }
+                    
+                    // Skip objects that use Oculus Interaction Grabbable
+                    #if UNITY_EDITOR || UNITY_ANDROID
+                    if (ShouldSkipOculusGrabbable(rb))
+                    {
+                        if (debugMode)
+                        {
+                            Debug.Log($"[VRGrabThrow] Skipping {rb.name} - using Oculus Interaction system");
+                        }
+                        continue;
+                    }
+                    #endif
+                    
                     float distance = hit.distance;
                     if (distance < closestDistance)
                     {
@@ -315,9 +601,9 @@ public class VRGrabThrow : MonoBehaviour
         {
             RaycastHit[] sphereHits = Physics.SphereCastAll(
                 grabPoint.position, 
-                grabDistance * 0.5f, 
+                detectionRadius * 0.5f, 
                 transform.forward, 
-                grabDistance, 
+                detectionRadius, 
                 grabbableLayer
             );
             
@@ -325,14 +611,95 @@ public class VRGrabThrow : MonoBehaviour
             {
                 if (hit.collider == null) continue;
                 
-                Rigidbody rb = hit.collider.attachedRigidbody;
+                Rigidbody rb = null;
+                
+                // Check for Grabbable component first (like BuildingBlock Cube)
+                #if UNITY_EDITOR || UNITY_ANDROID
+                try
+                {
+                    Component grabbableComponent = hit.collider.GetComponent("Grabbable");
+                    if (grabbableComponent == null)
+                    {
+                        // Search all loaded assemblies for the Grabbable type
+                        System.Type grabbableType = null;
+                        try
+                        {
+                            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                            {
+                                grabbableType = assembly.GetType("Oculus.Interaction.Grabbable");
+                                if (grabbableType != null) break;
+                            }
+                        }
+                        catch (System.Exception) { }
+                        
+                        if (grabbableType != null)
+                        {
+                            grabbableComponent = hit.collider.GetComponentInParent(grabbableType);
+                        }
+                    }
+                    
+                    if (grabbableComponent != null)
+                    {
+                        rb = grabbableComponent.GetComponent<Rigidbody>();
+                        if (rb == null)
+                        {
+                            var rigidbodyProperty = grabbableComponent.GetType().GetProperty("Rigidbody");
+                            if (rigidbodyProperty != null)
+                            {
+                                rb = rigidbodyProperty.GetValue(grabbableComponent) as Rigidbody;
+                            }
+                        }
+                    }
+                }
+                catch (System.Exception)
+                {
+                    // Oculus Interaction not available, fall through to Rigidbody check
+                }
+                #endif
+                
+                // Fallback: Check for Rigidbody directly
                 if (rb == null)
                 {
-                    rb = hit.collider.GetComponentInParent<Rigidbody>();
+                    // Try multiple methods to get Rigidbody
+                    rb = hit.collider.attachedRigidbody;
+                    if (rb == null)
+                    {
+                        rb = hit.collider.GetComponent<Rigidbody>();
+                    }
+                    if (rb == null)
+                    {
+                        rb = hit.collider.gameObject.GetComponent<Rigidbody>();
+                    }
+                    if (rb == null)
+                    {
+                        rb = hit.collider.GetComponentInParent<Rigidbody>();
+                    }
                 }
                 
                 if (rb != null && rb != grabbedObject)
                 {
+                    // Skip controller-related objects
+                    if (ShouldSkipObject(rb))
+                    {
+                        if (debugMode)
+                        {
+                            Debug.Log($"[VRGrabThrow] Skipping controller-related object: {rb.name}");
+                        }
+                        continue;
+                    }
+                    
+                    // Skip objects that use Oculus Interaction Grabbable
+                    #if UNITY_EDITOR || UNITY_ANDROID
+                    if (ShouldSkipOculusGrabbable(rb))
+                    {
+                        if (debugMode)
+                        {
+                            Debug.Log($"[VRGrabThrow] Skipping {rb.name} - using Oculus Interaction system");
+                        }
+                        continue;
+                    }
+                    #endif
+                    
                     float distance = hit.distance;
                     if (distance < closestDistance)
                     {
@@ -346,15 +713,12 @@ public class VRGrabThrow : MonoBehaviour
         // Grab the found object
         if (targetRb != null)
         {
-            if (debugMode)
-            {
-                Debug.Log($"[VRGrabThrow] Grabbing object: {targetRb.name} at distance {closestDistance:F3}");
-            }
+            Debug.Log($"[VRGrabThrow] ✓ Grabbing object: {targetRb.name} at distance {closestDistance:F3}");
             GrabObject(targetRb);
         }
-        else if (debugMode)
+        else
         {
-            Debug.Log($"[VRGrabThrow] No grabbable object found in range");
+            Debug.LogWarning($"[VRGrabThrow] ✗ No grabbable object found in range. Make sure balls have Rigidbody components!");
         }
     }
     
@@ -362,16 +726,88 @@ public class VRGrabThrow : MonoBehaviour
     {
         if (rb == null) return;
         
-        if (debugMode)
+        // Check if object is already being grabbed by Oculus Interaction system
+        #if UNITY_EDITOR || UNITY_ANDROID
+        try
         {
-            Debug.Log($"[VRGrabThrow] GrabObject called for {rb.name}");
+            Component grabbable = rb.GetComponent("Grabbable");
+            if (grabbable != null)
+            {
+                // Check if Grabbable is currently selected (being grabbed)
+                var pointsProperty = grabbable.GetType().GetProperty("Points", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (pointsProperty != null)
+                {
+                    var points = pointsProperty.GetValue(grabbable);
+                    if (points != null)
+                    {
+                        // Check if there are any active grab points
+                        var countProperty = points.GetType().GetProperty("Count");
+                        if (countProperty != null)
+                        {
+                            int pointCount = (int)countProperty.GetValue(points);
+                            if (pointCount > 0)
+                            {
+                                Debug.LogWarning($"[VRGrabThrow] Object {rb.name} is already being grabbed by Oculus Interaction system ({pointCount} grab points). Cannot grab with controller.");
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
         }
+        catch (System.Exception ex)
+        {
+            if (debugMode)
+            {
+                Debug.LogWarning($"[VRGrabThrow] Could not check if object is already grabbed: {ex.Message}");
+            }
+        }
+        #endif
+        
+        Debug.Log($"[VRGrabThrow] GrabObject called for {rb.name}");
+        
+        // Disable Oculus Interaction HandGrabInteractable if present to prevent conflicts
+        #if UNITY_EDITOR || UNITY_ANDROID
+        try
+        {
+            Component handGrabInteractable = rb.GetComponent("HandGrabInteractable");
+            if (handGrabInteractable == null)
+            {
+                // Try to find it by searching for the type
+                System.Type handGrabType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    handGrabType = assembly.GetType("Oculus.Interaction.HandGrab.HandGrabInteractable");
+                    if (handGrabType != null) break;
+                }
+                if (handGrabType != null)
+                {
+                    handGrabInteractable = rb.GetComponent(handGrabType);
+                }
+            }
+            
+            if (handGrabInteractable != null)
+            {
+                // Temporarily disable HandGrabInteractable to prevent conflicts
+                var enabledProperty = handGrabInteractable.GetType().GetProperty("enabled");
+                if (enabledProperty != null)
+                {
+                    enabledProperty.SetValue(handGrabInteractable, false);
+                    Debug.Log($"[VRGrabThrow] Disabled HandGrabInteractable on {rb.name} to prevent conflicts");
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            if (debugMode)
+            {
+                Debug.LogWarning($"[VRGrabThrow] Could not disable HandGrabInteractable: {ex.Message}");
+            }
+        }
+        #endif
         
         grabbedObject = rb;
         isGrabbing = true;
-        
-        // Store original kinematic state
-        bool wasKinematic = grabbedObject.isKinematic;
         
         // Make object kinematic while grabbed for smooth movement
         grabbedObject.isKinematic = true;
@@ -422,6 +858,47 @@ public class VRGrabThrow : MonoBehaviour
         if (grabbedObject == null) return;
         
         Rigidbody rbToRelease = grabbedObject;
+        
+        // Re-enable Oculus Interaction HandGrabInteractable if it was disabled
+        #if UNITY_EDITOR || UNITY_ANDROID
+        try
+        {
+            Component handGrabInteractable = rbToRelease.GetComponent("HandGrabInteractable");
+            if (handGrabInteractable == null)
+            {
+                System.Type handGrabType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    handGrabType = assembly.GetType("Oculus.Interaction.HandGrab.HandGrabInteractable");
+                    if (handGrabType != null) break;
+                }
+                if (handGrabType != null)
+                {
+                    handGrabInteractable = rbToRelease.GetComponent(handGrabType);
+                }
+            }
+            
+            if (handGrabInteractable != null)
+            {
+                var enabledProperty = handGrabInteractable.GetType().GetProperty("enabled");
+                if (enabledProperty != null)
+                {
+                    enabledProperty.SetValue(handGrabInteractable, true);
+                    if (debugMode)
+                    {
+                        Debug.Log($"[VRGrabThrow] Re-enabled HandGrabInteractable on {rbToRelease.name}");
+                    }
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            if (debugMode)
+            {
+                Debug.LogWarning($"[VRGrabThrow] Could not re-enable HandGrabInteractable: {ex.Message}");
+            }
+        }
+        #endif
         
         // Restore physics before applying velocity
         rbToRelease.isKinematic = false;

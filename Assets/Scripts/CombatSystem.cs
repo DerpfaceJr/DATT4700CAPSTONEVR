@@ -30,7 +30,11 @@ public class CombatSystem : MonoBehaviour
         Rigidbody rb = other.attachedRigidbody;
         if (rb != null)
         {
+            #if UNITY_2023_1_OR_NEWER
             HandleCollision(other.gameObject, rb.linearVelocity);
+            #else
+            HandleCollision(other.gameObject, rb.velocity);
+            #endif
         }
     }
     
@@ -43,20 +47,40 @@ public class CombatSystem : MonoBehaviour
         // Check if object has already been used for damage
         if (usedObjects.Contains(collidingObject)) return;
         
-        // Check minimum velocity
+        // Check if it's a building block projectile
+        BuildingBlockProjectile projectile = collidingObject.GetComponent<BuildingBlockProjectile>();
         float velocityMagnitude = velocity.magnitude;
-        if (velocityMagnitude < minDamageVelocity) return;
+        
+        // If it's a building block projectile, use its velocity check
+        if (projectile != null)
+        {
+            if (!projectile.IsThrown())
+            {
+                // Projectile not thrown fast enough
+                return;
+            }
+            // Use projectile's velocity magnitude for more accurate detection
+            velocityMagnitude = projectile.GetVelocityMagnitude();
+        }
+        else
+        {
+            // For non-projectile objects, check minimum velocity
+            if (velocityMagnitude < minDamageVelocity) return;
+        }
         
         // Find enemy controller on this GameObject (the enemy that was hit)
         EnemyController enemy = GetComponent<EnemyController>();
         if (enemy == null) return;
         
         // Calculate damage: velocity * mass * multiplier
-        float damage = velocityMagnitude * rb.mass * damageMultiplier;
+        float projectileMultiplier = (projectile != null) ? projectile.damageMultiplier : 1f;
+        float damage = velocityMagnitude * rb.mass * damageMultiplier * projectileMultiplier;
         damage = Mathf.Clamp(damage, 0f, maxDamage);
         
         // Apply damage
         enemy.TakeDamage(damage);
+        
+        Debug.Log($"[CombatSystem] {collidingObject.name} hit {gameObject.name} for {damage:F1} damage (velocity: {velocityMagnitude:F2} m/s)");
         
         // Mark object as used
         usedObjects.Add(collidingObject);

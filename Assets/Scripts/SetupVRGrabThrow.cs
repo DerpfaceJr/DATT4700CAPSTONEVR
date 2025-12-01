@@ -17,8 +17,10 @@ public class SetupVRGrabThrow : MonoBehaviour
             if (leftHand.GetComponent<VRGrabThrow>() == null)
             {
                 VRGrabThrow grabThrow = leftHand.AddComponent<VRGrabThrow>();
-                grabThrow.grabDistance = 2.0f;
+                grabThrow.grabDistance = 3.0f; // Updated to match new default
                 grabThrow.throwForce = 1.0f;
+                grabThrow.gripThreshold = 0.3f; // Lower threshold for easier grabbing
+                grabThrow.debugMode = true; // Enable debug mode for troubleshooting
                 Debug.Log("Added VRGrabThrow to LeftHandAnchor");
             }
             else
@@ -36,8 +38,10 @@ public class SetupVRGrabThrow : MonoBehaviour
             if (rightHand.GetComponent<VRGrabThrow>() == null)
             {
                 VRGrabThrow grabThrow = rightHand.AddComponent<VRGrabThrow>();
-                grabThrow.grabDistance = 2.0f;
+                grabThrow.grabDistance = 3.0f; // Updated to match new default
                 grabThrow.throwForce = 1.0f;
+                grabThrow.gripThreshold = 0.3f; // Lower threshold for easier grabbing
+                grabThrow.debugMode = true; // Enable debug mode for troubleshooting
                 Debug.Log("Added VRGrabThrow to RightHandAnchor");
             }
             else
