@@ -3940,7 +3940,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: cba6de8f95784c01be2745c71b044fae, type: 2}
+  - {fileID: -9000193717160162949, guid: 2cd02592d864f4a54b47a63b4179c2ca, type: 3}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -3970,7 +3970,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 624429556}
-  m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: -5529408165027395395, guid: 2cd02592d864f4a54b47a63b4179c2ca, type: 3}
 --- !u!114 &624429565
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4989,7 +4989,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: cba6de8f95784c01be2745c71b044fae, type: 2}
+  - {fileID: 8946716677119035865, guid: 2cd02592d864f4a54b47a63b4179c2ca, type: 3}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -5019,7 +5019,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 725192648}
-  m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: 8197599008773444948, guid: 2cd02592d864f4a54b47a63b4179c2ca, type: 3}
 --- !u!114 &725192657
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13554,6 +13554,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 110064653694484749, guid: 66ba9865a411e3f408e11a19103ee04f, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: -8586552770331844294, guid: 2cd02592d864f4a54b47a63b4179c2ca, type: 3}
+    - target: {fileID: 6360993030526488715, guid: 66ba9865a411e3f408e11a19103ee04f, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: -6491392231976555112, guid: 2cd02592d864f4a54b47a63b4179c2ca, type: 3}
     - target: {fileID: 6680793035990833333, guid: 66ba9865a411e3f408e11a19103ee04f, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0.219
