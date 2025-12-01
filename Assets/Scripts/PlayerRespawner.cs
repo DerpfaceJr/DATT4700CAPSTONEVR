@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>
 /// Handles player respawn at random locations within map boundaries
@@ -18,8 +19,16 @@ public class PlayerRespawner : MonoBehaviour
     [Tooltip("Maximum attempts to find valid spawn location")]
     public int maxSpawnAttempts = 50;
     
+    [Header("Spawn Location Tracking")]
+    [Tooltip("Minimum distance from previous spawn locations")]
+    public float minDistanceFromPreviousSpawns = 3f;
+    
+    [Tooltip("Maximum number of previous spawn locations to track")]
+    public int maxTrackedSpawnLocations = 20;
+    
     private Transform xrOrigin;
     private Bounds spawnBounds;
+    private List<Vector3> previousSpawnLocations = new List<Vector3>();
     
     void Start()
     {
@@ -89,12 +98,18 @@ public class PlayerRespawner : MonoBehaviour
             return;
         }
         
+        // Recalculate spawn bounds in case map was resized
+        CalculateSpawnBounds();
+        
         Vector3 spawnPosition = GetRandomSpawnPosition();
         
         if (spawnPosition != Vector3.zero)
         {
             // Teleport player to spawn position
             xrOrigin.position = spawnPosition;
+            
+            // Track this spawn location
+            RecordSpawnLocation(spawnPosition);
             
             // Reset rotation to face forward (optional)
             // xrOrigin.rotation = Quaternion.identity;
@@ -105,7 +120,9 @@ public class PlayerRespawner : MonoBehaviour
         {
             Debug.LogWarning("PlayerRespawner: Could not find valid spawn position!");
             // Fallback to center
-            xrOrigin.position = new Vector3(0f, groundLevel + playerHeightOffset, 0f);
+            Vector3 fallbackPos = new Vector3(0f, groundLevel + playerHeightOffset, 0f);
+            xrOrigin.position = fallbackPos;
+            RecordSpawnLocation(fallbackPos);
         }
     }
     
@@ -123,14 +140,31 @@ public class PlayerRespawner : MonoBehaviour
                 Random.Range(spawnBounds.min.z, spawnBounds.max.z)
             );
             
-            // Check if position is valid (not inside walls, has ground)
-            if (IsValidSpawnPosition(randomPos))
+            // Check if position is valid (not inside walls, has ground, not near previous spawns)
+            if (IsValidSpawnPosition(randomPos) && IsFarEnoughFromPreviousSpawns(randomPos))
             {
                 return randomPos;
             }
         }
         
-        // If no valid position found, return center
+        // If no valid position found after max attempts, try without spawn distance check
+        // (fallback if map is too small or too many previous spawns)
+        for (int i = 0; i < maxSpawnAttempts; i++)
+        {
+            Vector3 randomPos = new Vector3(
+                Random.Range(spawnBounds.min.x, spawnBounds.max.x),
+                groundLevel + playerHeightOffset,
+                Random.Range(spawnBounds.min.z, spawnBounds.max.z)
+            );
+            
+            if (IsValidSpawnPosition(randomPos))
+            {
+                Debug.LogWarning("PlayerRespawner: Could not find spawn location far enough from previous spawns. Using closest valid position.");
+                return randomPos;
+            }
+        }
+        
+        // Final fallback to center
         return new Vector3(0f, groundLevel + playerHeightOffset, 0f);
     }
     
@@ -157,6 +191,51 @@ public class PlayerRespawner : MonoBehaviour
         }
         
         return false;
+    }
+    
+    /// <summary>
+    /// Check if a position is far enough from all previous spawn locations
+    /// </summary>
+    private bool IsFarEnoughFromPreviousSpawns(Vector3 position)
+    {
+        // Only check X and Z coordinates (ignore Y height difference)
+        Vector2 pos2D = new Vector2(position.x, position.z);
+        
+        foreach (Vector3 previousSpawn in previousSpawnLocations)
+        {
+            Vector2 prev2D = new Vector2(previousSpawn.x, previousSpawn.z);
+            float distance = Vector2.Distance(pos2D, prev2D);
+            
+            if (distance < minDistanceFromPreviousSpawns)
+            {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    /// <summary>
+    /// Record a spawn location for future avoidance
+    /// </summary>
+    private void RecordSpawnLocation(Vector3 position)
+    {
+        previousSpawnLocations.Add(position);
+        
+        // Limit the number of tracked locations to prevent memory growth
+        if (previousSpawnLocations.Count > maxTrackedSpawnLocations)
+        {
+            previousSpawnLocations.RemoveAt(0); // Remove oldest
+        }
+    }
+    
+    /// <summary>
+    /// Clear all tracked spawn locations (useful for game reset)
+    /// </summary>
+    public void ClearSpawnHistory()
+    {
+        previousSpawnLocations.Clear();
+        Debug.Log("PlayerRespawner: Cleared spawn location history");
     }
     
     void OnDrawGizmosSelected()
