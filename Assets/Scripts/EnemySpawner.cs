@@ -215,9 +215,19 @@ public class EnemySpawner : MonoBehaviour
             combatSystem.instakillMinVelocity = 0.5f;
         }
         
+        // Check if enemy has rigged character model (has IKTargetFollowVRRig component)
+        IKTargetFollowVRRig enemyIKRig = enemy.GetComponent<IKTargetFollowVRRig>();
+        if (enemyIKRig == null)
+        {
+            enemyIKRig = enemy.GetComponentInChildren<IKTargetFollowVRRig>();
+        }
+        
+        bool hasRiggedCharacter = enemyIKRig != null;
+        
         // Add appropriate AI component (remove existing ones first)
         StaticEnemy existingStatic = enemy.GetComponent<StaticEnemy>();
         EnemyAI existingAI = enemy.GetComponent<EnemyAI>();
+        EnemyIKReplay existingIKReplay = enemy.GetComponent<EnemyIKReplay>();
         
         if (isFirstRound && index == 0)
         {
@@ -225,6 +235,10 @@ public class EnemySpawner : MonoBehaviour
             if (existingAI != null)
             {
                 Destroy(existingAI);
+            }
+            if (existingIKReplay != null)
+            {
+                Destroy(existingIKReplay);
             }
             if (existingStatic == null)
             {
@@ -241,30 +255,77 @@ public class EnemySpawner : MonoBehaviour
                 Destroy(existingStatic);
             }
             
-            EnemyAI enemyAI = existingAI;
-            if (enemyAI == null)
+            if (hasRiggedCharacter)
             {
-                enemyAI = enemy.AddComponent<EnemyAI>();
-                enemyAI.useInterpolation = true;
-            }
-            
-            // Set movement data - use previous round's movements
-            if (enemyAI != null)
-            {
-                if (movementData != null && movementData.Count > 0)
+                // Use EnemyIKReplay for rigged characters
+                if (existingAI != null)
                 {
-                    // Create a copy of the movement data to avoid reference issues
-                    List<MovementFrame> dataCopy = new List<MovementFrame>(movementData);
-                    enemyAI.SetMovementData(dataCopy);
-                    
-                    // Add time offset for multiple enemies replaying same path
-                    enemyAI.timeOffset = index * 0.5f; // Stagger enemies slightly
-                    
-                    Debug.Log($"Enemy {index + 1}: Assigned {movementData.Count} movement frames (first frame time: {movementData[0].timestamp}, last: {movementData[movementData.Count - 1].timestamp})");
+                    Destroy(existingAI);
                 }
-                else
+                
+                EnemyIKReplay enemyIKReplay = existingIKReplay;
+                if (enemyIKReplay == null)
                 {
-                    Debug.LogWarning($"Enemy {index + 1}: No movement data available for replay! (isFirstRound={isFirstRound}, index={index}, movementData is {(movementData == null ? "null" : $"empty (count={movementData.Count})")})");
+                    enemyIKReplay = enemy.AddComponent<EnemyIKReplay>();
+                }
+                
+                // Set IK rig reference
+                enemyIKReplay.ikRig = enemyIKRig;
+                enemyIKReplay.useInterpolation = true;
+                
+                // Set movement data - use previous round's movements
+                if (enemyIKReplay != null)
+                {
+                    if (movementData != null && movementData.Count > 0)
+                    {
+                        // Create a copy of the movement data to avoid reference issues
+                        List<MovementFrame> dataCopy = new List<MovementFrame>(movementData);
+                        enemyIKReplay.SetMovementData(dataCopy);
+                        
+                        // Add time offset for multiple enemies replaying same path
+                        enemyIKReplay.timeOffset = index * 0.5f; // Stagger enemies slightly
+                        
+                        Debug.Log($"Enemy {index + 1} (Rigged): Assigned {movementData.Count} movement frames with IK data (first frame time: {movementData[0].timestamp}, last: {movementData[movementData.Count - 1].timestamp})");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"Enemy {index + 1} (Rigged): No movement data available for replay! (isFirstRound={isFirstRound}, index={index}, movementData is {(movementData == null ? "null" : $"empty (count={movementData.Count})")})");
+                    }
+                }
+            }
+            else
+            {
+                // Fallback to EnemyAI for non-rigged enemies (backward compatible)
+                if (existingIKReplay != null)
+                {
+                    Destroy(existingIKReplay);
+                }
+                
+                EnemyAI enemyAI = existingAI;
+                if (enemyAI == null)
+                {
+                    enemyAI = enemy.AddComponent<EnemyAI>();
+                    enemyAI.useInterpolation = true;
+                }
+                
+                // Set movement data - use previous round's movements
+                if (enemyAI != null)
+                {
+                    if (movementData != null && movementData.Count > 0)
+                    {
+                        // Create a copy of the movement data to avoid reference issues
+                        List<MovementFrame> dataCopy = new List<MovementFrame>(movementData);
+                        enemyAI.SetMovementData(dataCopy);
+                        
+                        // Add time offset for multiple enemies replaying same path
+                        enemyAI.timeOffset = index * 0.5f; // Stagger enemies slightly
+                        
+                        Debug.Log($"Enemy {index + 1} (Basic): Assigned {movementData.Count} movement frames (first frame time: {movementData[0].timestamp}, last: {movementData[movementData.Count - 1].timestamp})");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"Enemy {index + 1} (Basic): No movement data available for replay! (isFirstRound={isFirstRound}, index={index}, movementData is {(movementData == null ? "null" : $"empty (count={movementData.Count})")})");
+                    }
                 }
             }
         }

@@ -19,6 +19,7 @@ public class PlayerMovementRecorder : MonoBehaviour
     private float recordingStartTime = 0f;
     private bool isRecording = false;
     private Transform playerTransform;
+    private IKTargetFollowVRRig playerIKRig;
     
     void Start()
     {
@@ -44,6 +45,31 @@ public class PlayerMovementRecorder : MonoBehaviour
             {
                 playerTransform = transform;
             }
+        }
+        
+        // Find player rigged character by Player tag to get IK rig
+        GameObject playerCharacter = GameObject.FindGameObjectWithTag("Player");
+        if (playerCharacter != null)
+        {
+            playerIKRig = playerCharacter.GetComponent<IKTargetFollowVRRig>();
+            if (playerIKRig == null)
+            {
+                // Try finding in children
+                playerIKRig = playerCharacter.GetComponentInChildren<IKTargetFollowVRRig>();
+            }
+            
+            if (playerIKRig != null)
+            {
+                Debug.Log("PlayerMovementRecorder: Found IK rig, will record IK target data");
+            }
+            else
+            {
+                Debug.LogWarning("PlayerMovementRecorder: Player tag found but no IKTargetFollowVRRig component. Will record basic movement only.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("PlayerMovementRecorder: No GameObject with Player tag found. Will record basic movement only.");
         }
     }
     
@@ -103,11 +129,34 @@ public class PlayerMovementRecorder : MonoBehaviour
         // Use relative timestamp (time since recording started)
         float relativeTime = Time.time - recordingStartTime;
         
-        MovementFrame frame = new MovementFrame(
-            relativeTime,
-            playerTransform.position,
-            playerTransform.rotation
-        );
+        MovementFrame frame;
+        
+        // Record IK target data if available
+        if (playerIKRig != null && playerIKRig.head.ikTarget != null && 
+            playerIKRig.leftHand.ikTarget != null && playerIKRig.rightHand.ikTarget != null)
+        {
+            // Record with IK data
+            frame = new MovementFrame(
+                relativeTime,
+                playerTransform.position,
+                playerTransform.rotation,
+                playerIKRig.head.ikTarget.position,
+                playerIKRig.head.ikTarget.rotation,
+                playerIKRig.leftHand.ikTarget.position,
+                playerIKRig.leftHand.ikTarget.rotation,
+                playerIKRig.rightHand.ikTarget.position,
+                playerIKRig.rightHand.ikTarget.rotation
+            );
+        }
+        else
+        {
+            // Fallback to basic recording (backward compatible)
+            frame = new MovementFrame(
+                relativeTime,
+                playerTransform.position,
+                playerTransform.rotation
+            );
+        }
         
         currentRoundMovements.Add(frame);
         

@@ -28,6 +28,19 @@ public class IKTargetFollowVRRig : MonoBehaviour
     // Update is called once per frame
     void LateUpdate()
     {
+        // Check if VR targets are null (enemy mode - EnemyIKReplay handles IK targets directly)
+        if (head.vrTarget == null || leftHand.vrTarget == null || rightHand.vrTarget == null)
+        {
+            // Enemy mode: Skip VR mapping, EnemyIKReplay will set IK targets directly
+            // Only update body position from head IK target if it exists
+            if (head.ikTarget != null)
+            {
+                transform.position = head.ikTarget.position + headBodyPositionOffset;
+            }
+            return;
+        }
+        
+        // Player mode: Use VR tracking to drive IK targets
         transform.position = head.ikTarget.position + headBodyPositionOffset;
         float yaw = head.vrTarget.eulerAngles.y;
         transform.rotation = Quaternion.Lerp(transform.rotation,Quaternion.Euler(transform.eulerAngles.x, yaw, transform.eulerAngles.z),turnSmoothness);
