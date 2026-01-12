@@ -160,10 +160,13 @@ public class RoundManager : MonoBehaviour
                 // Calculate index for new enemy (based on how many enemies already exist)
                 int newEnemyIndex = currentEnemies.Count;
                 
+                // First enemy in round 1 should be static, all others replay movements
+                bool shouldBeStatic = isFirstRound && newEnemyIndex == 0;
+                
                 GameObject newEnemy = enemySpawner.SpawnSingleEnemy(
                     newEnemyIndex, // Index for this enemy (0-based, continues from existing enemies)
                     previousRoundMovements,
-                    false // Only first enemy in round 1 is static, all others replay movements
+                    shouldBeStatic // First enemy in round 1 is static, all others replay movements
                 );
                 
                 if (newEnemy != null)

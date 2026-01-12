@@ -159,12 +159,14 @@ public class EnemySpawner : MonoBehaviour
             rb = enemy.AddComponent<Rigidbody>();
             rb.mass = 1f;
             rb.useGravity = true; // Ensure gravity is enabled
+            rb.isKinematic = false; // Must be non-kinematic for gravity to work
             rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         }
         else
         {
-            // Ensure gravity is enabled on existing Rigidbody
+            // Ensure gravity is enabled and not kinematic on existing Rigidbody
             rb.useGravity = true;
+            rb.isKinematic = false; // Must be non-kinematic for gravity to work
         }
         
         // Ensure enemy is red (if using prefab, check material)
@@ -246,6 +248,13 @@ public class EnemySpawner : MonoBehaviour
                 staticEnemy.rotationSpeed = 30f;
                 staticEnemy.pattern = StaticEnemy.RotationPattern.Continuous;
             }
+            
+            // Disable IKFootSolver components on static enemy (not needed for stationary enemy)
+            IKFootSolver[] footSolvers = enemy.GetComponentsInChildren<IKFootSolver>();
+            foreach (IKFootSolver footSolver in footSolvers)
+            {
+                footSolver.enabled = false;
+            }
         }
         else
         {
@@ -273,11 +282,27 @@ public class EnemySpawner : MonoBehaviour
                 enemyIKReplay.ikRig = enemyIKRig;
                 enemyIKReplay.useInterpolation = true;
                 
+                // Verify IK targets are assigned
+                if (enemyIKRig != null)
+                {
+                    bool hasHeadIK = enemyIKRig.head.ikTarget != null;
+                    bool hasLeftHandIK = enemyIKRig.leftHand.ikTarget != null;
+                    bool hasRightHandIK = enemyIKRig.rightHand.ikTarget != null;
+                    Debug.Log($"Enemy {index + 1} (Rigged): IK Targets - Head: {hasHeadIK}, LeftHand: {hasLeftHandIK}, RightHand: {hasRightHandIK}");
+                }
+                
                 // Set movement data - use previous round's movements
                 if (enemyIKReplay != null)
                 {
                     if (movementData != null && movementData.Count > 0)
                     {
+                        // Check if movement data has IK data
+                        bool hasIKData = movementData.Count > 0 && (
+                            movementData[0].headPosition != Vector3.zero ||
+                            movementData[0].leftHandPosition != Vector3.zero ||
+                            movementData[0].rightHandPosition != Vector3.zero
+                        );
+                        
                         // Create a copy of the movement data to avoid reference issues
                         List<MovementFrame> dataCopy = new List<MovementFrame>(movementData);
                         enemyIKReplay.SetMovementData(dataCopy);
@@ -285,7 +310,7 @@ public class EnemySpawner : MonoBehaviour
                         // Add time offset for multiple enemies replaying same path
                         enemyIKReplay.timeOffset = index * 0.5f; // Stagger enemies slightly
                         
-                        Debug.Log($"Enemy {index + 1} (Rigged): Assigned {movementData.Count} movement frames with IK data (first frame time: {movementData[0].timestamp}, last: {movementData[movementData.Count - 1].timestamp})");
+                        Debug.Log($"Enemy {index + 1} (Rigged): Assigned {movementData.Count} movement frames. Has IK Data: {hasIKData} (first frame time: {movementData[0].timestamp}, last: {movementData[movementData.Count - 1].timestamp})");
                     }
                     else
                     {

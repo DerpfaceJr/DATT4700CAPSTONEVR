@@ -23,9 +23,17 @@ public class EnemyIKReplay : MonoBehaviour
     
     private float replayStartTime = 0f;
     private bool isReplaying = false;
+    private Rigidbody rb; // Cache Rigidbody for physics-based movement
     
     void Start()
     {
+        // Cache Rigidbody for physics-based movement
+        rb = GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = GetComponentInParent<Rigidbody>();
+        }
+        
         // Find IK rig if not assigned
         if (ikRig == null)
         {
@@ -47,7 +55,7 @@ public class EnemyIKReplay : MonoBehaviour
         if (isReplaying && movementData.Count > 0)
         {
             ApplyFrame(movementData[0]);
-            Debug.Log($"EnemyIKReplay on {gameObject.name}: Started replay with {movementData.Count} frames");
+            Debug.Log($"EnemyIKReplay on {gameObject.name}: Started replay with {movementData.Count} frames, Rigidbody={(rb != null ? "found" : "not found")}");
         }
         else
         {
@@ -127,9 +135,18 @@ public class EnemyIKReplay : MonoBehaviour
     /// </summary>
     private void ApplyFrame(MovementFrame frame)
     {
-        // Apply root transform
-        transform.position = frame.position;
-        transform.rotation = frame.rotation;
+        // Apply root transform - use Rigidbody.MovePosition if available for physics compatibility
+        if (rb != null && !rb.isKinematic)
+        {
+            rb.MovePosition(frame.position);
+            rb.MoveRotation(frame.rotation);
+        }
+        else
+        {
+            // Fallback to direct transform if no Rigidbody or kinematic
+            transform.position = frame.position;
+            transform.rotation = frame.rotation;
+        }
         
         // Apply IK targets (if IK data exists - check if not default values)
         if (ikRig != null && ikRig.head.ikTarget != null && 
@@ -162,9 +179,21 @@ public class EnemyIKReplay : MonoBehaviour
     /// </summary>
     private void ApplyFrameInterpolated(MovementFrame current, MovementFrame next, float t)
     {
-        // Interpolate root transform
-        transform.position = Vector3.Lerp(current.position, next.position, t);
-        transform.rotation = Quaternion.Slerp(current.rotation, next.rotation, t);
+        // Interpolate root transform - use Rigidbody.MovePosition if available for physics compatibility
+        Vector3 targetPosition = Vector3.Lerp(current.position, next.position, t);
+        Quaternion targetRotation = Quaternion.Slerp(current.rotation, next.rotation, t);
+        
+        if (rb != null && !rb.isKinematic)
+        {
+            rb.MovePosition(targetPosition);
+            rb.MoveRotation(targetRotation);
+        }
+        else
+        {
+            // Fallback to direct transform if no Rigidbody or kinematic
+            transform.position = targetPosition;
+            transform.rotation = targetRotation;
+        }
         
         // Interpolate IK targets (if IK data exists)
         if (ikRig != null && ikRig.head.ikTarget != null && 

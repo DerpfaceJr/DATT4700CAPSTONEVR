@@ -115,3 +115,4 @@ An editor tool is available to help automate some setup:
 - Enemies will automatically use EnemyIKReplay instead of EnemyAI when IKTargetFollowVRRig is detected
 - The system is backward compatible - enemies without rigged models will still work with basic movement replay
 
+
