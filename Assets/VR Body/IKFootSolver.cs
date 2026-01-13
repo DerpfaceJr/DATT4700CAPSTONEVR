@@ -27,12 +27,29 @@ public class IKFootSolver : MonoBehaviour
     Vector3 oldPosition, currentPosition, newPosition;
     Vector3 oldNormal, currentNormal, newNormal;
     float lerp;
+    
+    // Cached log path to avoid recalculating
+    private static string cachedLogPath = null;
+    
+    private static string GetLogPath()
+    {
+        if (cachedLogPath == null)
+        {
+            cachedLogPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Application.dataPath), ".cursor", "debug.log");
+            string logDir = System.IO.Path.GetDirectoryName(cachedLogPath);
+            if (!System.IO.Directory.Exists(logDir))
+            {
+                System.IO.Directory.CreateDirectory(logDir);
+            }
+        }
+        return cachedLogPath;
+    }
 
     private void Start()
     {
         // #region agent log
         string log1 = "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A,C,D\",\"location\":\"IKFootSolver.cs:Start\",\"message\":\"IKFootSolver Start\",\"data\":{\"gameObjectName\":\"" + gameObject.name + "\",\"bodyIsNull\":" + (body == null ? "true" : "false") + ",\"bodyName\":\"" + (body != null ? body.name : "null") + "\",\"transformName\":\"" + transform.name + "\",\"parentName\":\"" + (transform.parent != null ? transform.parent.name : "null") + "\"},\"timestamp\":" + System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        System.IO.File.AppendAllText(@"c:\Users\joshu\Documents\DATT4700CAPSTONEVR\.cursor\debug.log", log1);
+        try { System.IO.File.AppendAllText(GetLogPath(), log1); } catch (System.Exception) { }
         // #endregion
         footSpacing = transform.localPosition.x;
         currentPosition = newPosition = oldPosition = transform.position;
@@ -41,7 +58,7 @@ public class IKFootSolver : MonoBehaviour
         
         // #region agent log
         string log2 = "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"D\",\"location\":\"IKFootSolver.cs:Start\",\"message\":\"Attempting auto-assign body\",\"data\":{\"bodyWasNull\":" + (body == null ? "true" : "false") + "},\"timestamp\":" + System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        System.IO.File.AppendAllText(@"c:\Users\joshu\Documents\DATT4700CAPSTONEVR\.cursor\debug.log", log2);
+        try { System.IO.File.AppendAllText(GetLogPath(), log2); } catch (System.Exception) { }
         // #endregion
         // Try to auto-assign body if null (Hypothesis D)
         if (body == null)
@@ -53,7 +70,7 @@ public class IKFootSolver : MonoBehaviour
             {
                 // #region agent log
                 string log3 = "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"D\",\"location\":\"IKFootSolver.cs:Start\",\"message\":\"Searching for body\",\"data\":{\"currentName\":\"" + current.name + "\",\"depth\":" + depth + "},\"timestamp\":" + System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-                System.IO.File.AppendAllText(@"c:\Users\joshu\Documents\DATT4700CAPSTONEVR\.cursor\debug.log", log3);
+                try { System.IO.File.AppendAllText(GetLogPath(), log3); } catch (System.Exception) { }
                 // #endregion
                 // Look for character root (usually has Animator or is named Ch44)
                 if (current.GetComponent<Animator>() != null || current.name.Contains("Ch44") || current.name.Contains("Enemy"))
@@ -61,7 +78,7 @@ public class IKFootSolver : MonoBehaviour
                     body = current;
                     // #region agent log
                     string log4 = "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"D\",\"location\":\"IKFootSolver.cs:Start\",\"message\":\"Auto-assigned body\",\"data\":{\"bodyName\":\"" + body.name + "\"},\"timestamp\":" + System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-                    System.IO.File.AppendAllText(@"c:\Users\joshu\Documents\DATT4700CAPSTONEVR\.cursor\debug.log", log4);
+                    try { System.IO.File.AppendAllText(GetLogPath(), log4); } catch (System.Exception) { }
                     // #endregion
                     break;
                 }
@@ -77,14 +94,14 @@ public class IKFootSolver : MonoBehaviour
     {
         // #region agent log
         string log5 = "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\",\"location\":\"IKFootSolver.cs:Update\",\"message\":\"Update entry\",\"data\":{\"bodyIsNull\":" + (body == null ? "true" : "false") + ",\"gameObjectName\":\"" + gameObject.name + "\"},\"timestamp\":" + System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        System.IO.File.AppendAllText(@"c:\Users\joshu\Documents\DATT4700CAPSTONEVR\.cursor\debug.log", log5);
+        try { System.IO.File.AppendAllText(GetLogPath(), log5); } catch (System.Exception) { }
         // #endregion
         // Check if body is null (Hypothesis C) - prevent crash
         if (body == null)
         {
             // #region agent log
             string log6 = "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C,B\",\"location\":\"IKFootSolver.cs:Update\",\"message\":\"Body is null, skipping Update\",\"data\":{\"gameObjectName\":\"" + gameObject.name + "\",\"isEnemy\":" + gameObject.name.Contains("Enemy").ToString().ToLower() + "},\"timestamp\":" + System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            System.IO.File.AppendAllText(@"c:\Users\joshu\Documents\DATT4700CAPSTONEVR\.cursor\debug.log", log6);
+            try { System.IO.File.AppendAllText(GetLogPath(), log6); } catch (System.Exception) { }
             // #endregion
             // Disable component if body is null (enemies don't need foot IK)
             enabled = false;
