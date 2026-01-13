@@ -135,16 +135,20 @@ public class EnemyIKReplay : MonoBehaviour
     /// </summary>
     private void ApplyFrame(MovementFrame frame)
     {
-        // Apply root transform - use Rigidbody.MovePosition if available for physics compatibility
+        // Apply root transform - only horizontal (X, Z) movement, let gravity handle Y
+        Vector3 targetPos = frame.position;
+        // Only apply X, Z coordinates - preserve current Y for gravity
+        Vector3 horizontalPos = new Vector3(targetPos.x, transform.position.y, targetPos.z);
+        
         if (rb != null && !rb.isKinematic)
         {
-            rb.MovePosition(frame.position);
+            rb.MovePosition(horizontalPos);
             rb.MoveRotation(frame.rotation);
         }
         else
         {
             // Fallback to direct transform if no Rigidbody or kinematic
-            transform.position = frame.position;
+            transform.position = horizontalPos;
             transform.rotation = frame.rotation;
         }
         
@@ -179,19 +183,21 @@ public class EnemyIKReplay : MonoBehaviour
     /// </summary>
     private void ApplyFrameInterpolated(MovementFrame current, MovementFrame next, float t)
     {
-        // Interpolate root transform - use Rigidbody.MovePosition if available for physics compatibility
+        // Interpolate root transform - only horizontal (X, Z) movement, let gravity handle Y
         Vector3 targetPosition = Vector3.Lerp(current.position, next.position, t);
+        // Only apply X, Z coordinates - preserve current Y for gravity
+        Vector3 horizontalPos = new Vector3(targetPosition.x, transform.position.y, targetPosition.z);
         Quaternion targetRotation = Quaternion.Slerp(current.rotation, next.rotation, t);
         
         if (rb != null && !rb.isKinematic)
         {
-            rb.MovePosition(targetPosition);
+            rb.MovePosition(horizontalPos);
             rb.MoveRotation(targetRotation);
         }
         else
         {
             // Fallback to direct transform if no Rigidbody or kinematic
-            transform.position = targetPosition;
+            transform.position = horizontalPos;
             transform.rotation = targetRotation;
         }
         

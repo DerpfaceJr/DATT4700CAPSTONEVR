@@ -371,28 +371,101 @@ public class EnemySpawner : MonoBehaviour
             }
         }
         
-        // Use random spawn position
+        // Calculate random X, Z position within map bounds
+        float x = 0f;
+        float z = 0f;
+        float groundLevel = 0f;
+        float wallPadding = 1f;
+        
+        // Get map bounds (similar to PlayerRespawner logic)
         if (playerRespawner != null)
         {
-            // Use PlayerRespawner's bounds calculation
-            Bounds bounds = new Bounds(Vector3.zero, new Vector3(5f, 0.1f, 5f));
-            
-            // Generate random position within bounds
-            Vector3 randomPos = new Vector3(
-                Random.Range(-2f, 2f),
-                0.5f, // Enemy height
-                Random.Range(-2f, 2f)
-            );
-            
-            return randomPos;
+            // Try to get groundLevel from PlayerRespawner
+            groundLevel = playerRespawner.groundLevel;
+            wallPadding = playerRespawner.wallPadding;
         }
         
-        // Fallback
-        return new Vector3(
-            Random.Range(-2f, 2f),
-            0.5f,
-            Random.Range(-2f, 2f)
-        );
+        // Find walls to determine map boundaries (same logic as PlayerRespawner)
+        GameObject westWall = GameObject.Find("WestWall");
+        GameObject eastWall = GameObject.Find("EastWall");
+        GameObject northWall = GameObject.Find("NorthWall");
+        GameObject southWall = GameObject.Find("SouthWall");
+        
+        float minX = -2.5f; // Default values if walls not found
+        float maxX = 2.5f;
+        float minZ = -2.5f;
+        float maxZ = 2.5f;
+        
+        if (westWall != null)
+        {
+            minX = westWall.transform.position.x + wallPadding;
+        }
+        if (eastWall != null)
+        {
+            maxX = eastWall.transform.position.x - wallPadding;
+        }
+        if (southWall != null)
+        {
+            minZ = southWall.transform.position.z + wallPadding;
+        }
+        if (northWall != null)
+        {
+            maxZ = northWall.transform.position.z - wallPadding;
+        }
+        
+        // Generate random X, Z within bounds
+        x = Random.Range(minX, maxX);
+        z = Random.Range(minZ, maxZ);
+        
+        // Calculate enemy height offset based on pivot point
+        float enemyHeightOffset = 0f;
+        
+        if (enemyPrefab != null)
+        {
+            // Get enemy's renderer to calculate bounds
+            Renderer renderer = enemyPrefab.GetComponent<Renderer>();
+            if (renderer == null)
+            {
+                renderer = enemyPrefab.GetComponentInChildren<Renderer>();
+            }
+            
+            if (renderer != null)
+            {
+                // Get the bounds (this gives us the size)
+                Bounds bounds = renderer.bounds;
+                // bounds.extents.y is half the height
+                // Most Unity objects have pivot at center, so add extents.y
+                enemyHeightOffset = bounds.extents.y;
+            }
+            else
+            {
+                // No renderer found, use default
+                enemyHeightOffset = 0.5f;
+            }
+        }
+        else
+        {
+            // Procedural enemy - use enemyScale
+            enemyHeightOffset = enemyScale.y * 0.5f;
+        }
+        
+        // Use raycast to find actual ground surface
+        float y = groundLevel + enemyHeightOffset; // Default fallback
+        RaycastHit hit;
+        Vector3 rayStart = new Vector3(x, 10f, z); // Start raycast from above
+        
+        if (Physics.Raycast(rayStart, Vector3.down, out hit, 20f))
+        {
+            // Found ground - spawn enemy on the surface
+            y = hit.point.y + enemyHeightOffset;
+        }
+        else
+        {
+            // Raycast failed - use groundLevel as fallback
+            y = groundLevel + enemyHeightOffset;
+        }
+        
+        return new Vector3(x, y, z);
     }
     
     /// <summary>
