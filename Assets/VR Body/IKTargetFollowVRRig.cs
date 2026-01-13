@@ -33,10 +33,10 @@ public class IKTargetFollowVRRig : MonoBehaviour
         {
             // Enemy mode: Skip VR mapping, EnemyIKReplay will set IK targets directly
             // Only update body position from head IK target if it exists
-            if (head.ikTarget != null)
-            {
-                transform.position = head.ikTarget.position + headBodyPositionOffset;
-            }
+            //if (head.ikTarget != null)
+            //{
+            //    transform.position = head.ikTarget.position + headBodyPositionOffset;
+            //}
             return;
         }
         
