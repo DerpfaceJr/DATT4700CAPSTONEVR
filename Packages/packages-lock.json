@@ -7,7 +7,7 @@
       "dependencies": {
         "com.unity.nuget.newtonsoft-json": "3.0.2"
       },
-      "hash": "edd7817d4010032b47e6874c165c8d0b37680407"
+      "hash": "a4f74dab4300d7268864960516ec1513131f28ce"
     },
     "com.meta.xr.sdk.core": {
       "version": "81.0.0",
