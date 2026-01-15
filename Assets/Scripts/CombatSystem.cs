@@ -50,6 +50,9 @@ public class CombatSystem : MonoBehaviour
         // Check if this is a thrown object (has Rigidbody)
         Rigidbody rb = collidingObject.GetComponent<Rigidbody>();
         if (rb == null) return;
+
+        //Check if rb is player
+        if (collidingObject.CompareTag("Player")) return;
         
         // Check if object has already been used for damage
         if (usedObjects.Contains(collidingObject)) return;
