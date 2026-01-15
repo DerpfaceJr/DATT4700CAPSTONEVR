@@ -24,6 +24,8 @@ public class EnemyIKReplay : MonoBehaviour
     private float replayStartTime = 0f;
     private bool isReplaying = false;
     private Rigidbody rb; // Cache Rigidbody for physics-based movement
+    private float groundLevel = 0f; // Store ground level after initial contact
+    private bool hasGroundContact = false; // Track if we've made initial ground contact
     
     void Start()
     {
@@ -73,6 +75,12 @@ public class EnemyIKReplay : MonoBehaviour
         if (ikRig == null)
         {
             return;
+        }
+        
+        // Check for ground contact and establish stable ground level
+        if (!hasGroundContact)
+        {
+            CheckGroundContact();
         }
         
         // Calculate current replay time (relative time since replay started)
@@ -131,14 +139,37 @@ public class EnemyIKReplay : MonoBehaviour
     }
     
     /// <summary>
+    /// Check for ground contact and establish stable ground level
+    /// </summary>
+    private void CheckGroundContact()
+    {
+        // Raycast downward to find ground
+        RaycastHit hit;
+        if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down, out hit, 2f))
+        {
+            groundLevel = hit.point.y;
+            hasGroundContact = true;
+            Debug.Log($"EnemyIKReplay: Ground contact established at Y={groundLevel}");
+        }
+        // Also check if rigidbody has settled (low velocity = on ground)
+        else if (rb != null && rb.linearVelocity.magnitude < 0.1f)
+        {
+            groundLevel = transform.position.y;
+            hasGroundContact = true;
+            Debug.Log($"EnemyIKReplay: Ground contact established via velocity check at Y={groundLevel}");
+        }
+    }
+    
+    /// <summary>
     /// Apply a single frame of movement data
     /// </summary>
     private void ApplyFrame(MovementFrame frame)
     {
-        // Apply root transform - only horizontal (X, Z) movement, let gravity handle Y
+        // Apply root transform - only horizontal (X, Z) movement, maintain stable ground level
         Vector3 targetPos = frame.position;
-        // Only apply X, Z coordinates - preserve current Y for gravity
-        Vector3 horizontalPos = new Vector3(targetPos.x, transform.position.y, targetPos.z);
+        // Use established ground level if available, otherwise preserve current Y
+        float yPos = hasGroundContact ? groundLevel : transform.position.y;
+        Vector3 horizontalPos = new Vector3(targetPos.x, yPos, targetPos.z);
         
         if (rb != null && !rb.isKinematic)
         {
@@ -183,10 +214,11 @@ public class EnemyIKReplay : MonoBehaviour
     /// </summary>
     private void ApplyFrameInterpolated(MovementFrame current, MovementFrame next, float t)
     {
-        // Interpolate root transform - only horizontal (X, Z) movement, let gravity handle Y
+        // Interpolate root transform - only horizontal (X, Z) movement, maintain stable ground level
         Vector3 targetPosition = Vector3.Lerp(current.position, next.position, t);
-        // Only apply X, Z coordinates - preserve current Y for gravity
-        Vector3 horizontalPos = new Vector3(targetPosition.x, transform.position.y, targetPosition.z);
+        // Use established ground level if available, otherwise preserve current Y
+        float yPos = hasGroundContact ? groundLevel : transform.position.y;
+        Vector3 horizontalPos = new Vector3(targetPosition.x, yPos, targetPosition.z);
         Quaternion targetRotation = Quaternion.Slerp(current.rotation, next.rotation, t);
         
         if (rb != null && !rb.isKinematic)

@@ -176,17 +176,24 @@ public class EnemySpawner : MonoBehaviour
         {
             rb = enemy.AddComponent<Rigidbody>();
             rb.mass = 70f; // Typical human weight
+            rb.linearDamping = 2f; // Add drag to prevent sliding
+            rb.angularDamping = 5f; // Prevent rotation drift
             rb.useGravity = true; // Ensure gravity is enabled
             rb.isKinematic = false; // Must be non-kinematic for gravity to work
             rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous; // Better collision detection
+            rb.interpolation = RigidbodyInterpolation.Interpolate; // Smooth movement
         }
         else
         {
             // Ensure gravity is enabled and not kinematic on existing Rigidbody
+            rb.linearDamping = 2f;
+            rb.angularDamping = 5f;
             rb.useGravity = true;
             rb.isKinematic = false; // Must be non-kinematic for gravity to work
+            rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
         }
         
         // Ensure enemy has a collider for physics and combat
@@ -195,9 +202,9 @@ public class EnemySpawner : MonoBehaviour
         {
             // Add CapsuleCollider for rigged characters (encompasses body)
             CapsuleCollider capsule = enemy.AddComponent<CapsuleCollider>();
-            capsule.center = new Vector3(0f, 1f, 0f); // Center at body height
-            capsule.radius = 0.4f; // Wide enough for body
-            capsule.height = 1.8f; // Typical human height
+            capsule.center = new Vector3(0f, 1.05f, 0f); // Center slightly higher to prevent ground penetration
+            capsule.radius = 0.35f; // Slightly narrower for more precise hits
+            capsule.height = 1.9f; // Slightly taller
             capsule.direction = 1; // Y-axis (vertical)
             
             Debug.Log($"Added CapsuleCollider to enemy {enemy.name}: center={capsule.center}, radius={capsule.radius}, height={capsule.height}");
