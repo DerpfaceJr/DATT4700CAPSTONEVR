@@ -34,6 +34,17 @@ public class VRGrabThrow : MonoBehaviour
     [Tooltip("Enable debug logging")]
     public bool debugMode = false;
     
+    [Header("Forward Throw Settings")]
+    [Tooltip("Enable forward-only throwing (prevents sideways/backward throws)")]
+    public bool forwardThrowEnabled = true;
+    
+    [Tooltip("Minimum forward speed (prevents weak/backward throws)")]
+    public float minForwardSpeed = 0.3f;
+    
+    [Tooltip("Side movement filter (0-1, higher = more filtering, 1.0 = forward only)")]
+    [Range(0f, 1f)]
+    public float sideMovementFilter = 0.9f;
+    
     private Rigidbody grabbedObject = null;
     private Transform grabPoint = null;
     private InputDevice controllerDevice;
@@ -770,6 +781,8 @@ public class VRGrabThrow : MonoBehaviour
         #if UNITY_EDITOR || UNITY_ANDROID
         try
         {
+            if (rb == null || rb.gameObject == null) return;
+            
             Component handGrabInteractable = rb.GetComponent("HandGrabInteractable");
             if (handGrabInteractable == null)
             {
@@ -777,28 +790,46 @@ public class VRGrabThrow : MonoBehaviour
                 System.Type handGrabType = null;
                 foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
                 {
-                    handGrabType = assembly.GetType("Oculus.Interaction.HandGrab.HandGrabInteractable");
-                    if (handGrabType != null) break;
+                    try
+                    {
+                        handGrabType = assembly.GetType("Oculus.Interaction.HandGrab.HandGrabInteractable");
+                        if (handGrabType != null) break;
+                    }
+                    catch { }
                 }
-                if (handGrabType != null)
+                if (handGrabType != null && rb != null && rb.gameObject != null)
                 {
                     handGrabInteractable = rb.GetComponent(handGrabType);
                 }
             }
             
-            if (handGrabInteractable != null)
+            if (handGrabInteractable != null && handGrabInteractable.gameObject != null)
             {
                 // Temporarily disable HandGrabInteractable to prevent conflicts
                 var enabledProperty = handGrabInteractable.GetType().GetProperty("enabled");
                 if (enabledProperty != null)
                 {
-                    enabledProperty.SetValue(handGrabInteractable, false);
-                    Debug.Log($"[VRGrabThrow] Disabled HandGrabInteractable on {rb.name} to prevent conflicts");
+                    try
+                    {
+                        enabledProperty.SetValue(handGrabInteractable, false);
+                        if (debugMode)
+                        {
+                            Debug.Log($"[VRGrabThrow] Disabled HandGrabInteractable on {rb.name} to prevent conflicts");
+                        }
+                    }
+                    catch (System.Exception ex2)
+                    {
+                        if (debugMode)
+                        {
+                            Debug.LogWarning($"[VRGrabThrow] Error disabling HandGrabInteractable: {ex2.Message}");
+                        }
+                    }
                 }
             }
         }
         catch (System.Exception ex)
         {
+            // Silently catch to prevent errors from Oculus SDK components
             if (debugMode)
             {
                 Debug.LogWarning($"[VRGrabThrow] Could not disable HandGrabInteractable: {ex.Message}");
@@ -863,36 +894,53 @@ public class VRGrabThrow : MonoBehaviour
         #if UNITY_EDITOR || UNITY_ANDROID
         try
         {
+            if (rbToRelease == null || rbToRelease.gameObject == null) return;
+            
             Component handGrabInteractable = rbToRelease.GetComponent("HandGrabInteractable");
             if (handGrabInteractable == null)
             {
                 System.Type handGrabType = null;
                 foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
                 {
-                    handGrabType = assembly.GetType("Oculus.Interaction.HandGrab.HandGrabInteractable");
-                    if (handGrabType != null) break;
+                    try
+                    {
+                        handGrabType = assembly.GetType("Oculus.Interaction.HandGrab.HandGrabInteractable");
+                        if (handGrabType != null) break;
+                    }
+                    catch { }
                 }
-                if (handGrabType != null)
+                if (handGrabType != null && rbToRelease != null && rbToRelease.gameObject != null)
                 {
                     handGrabInteractable = rbToRelease.GetComponent(handGrabType);
                 }
             }
             
-            if (handGrabInteractable != null)
+            if (handGrabInteractable != null && handGrabInteractable.gameObject != null)
             {
                 var enabledProperty = handGrabInteractable.GetType().GetProperty("enabled");
                 if (enabledProperty != null)
                 {
-                    enabledProperty.SetValue(handGrabInteractable, true);
-                    if (debugMode)
+                    try
                     {
-                        Debug.Log($"[VRGrabThrow] Re-enabled HandGrabInteractable on {rbToRelease.name}");
+                        enabledProperty.SetValue(handGrabInteractable, true);
+                        if (debugMode)
+                        {
+                            Debug.Log($"[VRGrabThrow] Re-enabled HandGrabInteractable on {rbToRelease.name}");
+                        }
+                    }
+                    catch (System.Exception ex2)
+                    {
+                        if (debugMode)
+                        {
+                            Debug.LogWarning($"[VRGrabThrow] Error re-enabling HandGrabInteractable: {ex2.Message}");
+                        }
                     }
                 }
             }
         }
         catch (System.Exception ex)
         {
+            // Silently catch to prevent errors from Oculus SDK components
             if (debugMode)
             {
                 Debug.LogWarning($"[VRGrabThrow] Could not re-enable HandGrabInteractable: {ex.Message}");
@@ -905,7 +953,81 @@ public class VRGrabThrow : MonoBehaviour
         rbToRelease.transform.SetParent(null);
         
         // Calculate throw velocity based on controller movement
-        Vector3 throwVelocity = currentVelocity * throwForce;
+        Vector3 throwVelocity;
+        
+        if (forwardThrowEnabled)
+        {
+            // Get forward direction
+            Vector3 forwardDirection = transform.forward;
+            
+            // Project velocity onto forward direction
+            float forwardSpeed = Vector3.Dot(currentVelocity, forwardDirection);
+            
+            // Calculate side movement (perpendicular to forward)
+            Vector3 sideMovement = currentVelocity - (forwardDirection * forwardSpeed);
+            
+            // If forward speed is negative (backward), use movement magnitude instead
+            // This handles overhand throws where controller might move backward
+            if (forwardSpeed < 0)
+            {
+                // Use total movement speed but always forward direction
+                float movementSpeed = currentVelocity.magnitude;
+                forwardSpeed = Mathf.Max(movementSpeed, minForwardSpeed);
+                
+                if (debugMode)
+                {
+                    Debug.Log($"[VRGrabThrow] Backward movement detected - Using forward direction with speed: {forwardSpeed:F2} m/s");
+                }
+            }
+            else
+            {
+                // Apply minimum forward speed threshold (prevents weak throws)
+                if (forwardSpeed < minForwardSpeed)
+                {
+                    forwardSpeed = minForwardSpeed;
+                }
+            }
+            
+            // Filter out side movements (reduce by filter amount)
+            Vector3 filteredSideMovement = sideMovement * (1f - sideMovementFilter);
+            
+            // Ensure filtered side movement doesn't have backward components
+            // Project filtered side movement onto forward to check
+            float sideForwardComponent = Vector3.Dot(filteredSideMovement, forwardDirection);
+            if (sideForwardComponent < 0)
+            {
+                // Remove backward component from side movement
+                filteredSideMovement = filteredSideMovement - (forwardDirection * sideForwardComponent);
+            }
+            
+            // Combine forward + filtered side movement (always forward)
+            Vector3 filteredVelocity = (forwardDirection * forwardSpeed) + filteredSideMovement;
+            
+            // Final safety check: ensure throw velocity has forward component
+            float finalForwardSpeed = Vector3.Dot(filteredVelocity, forwardDirection);
+            if (finalForwardSpeed <= 0)
+            {
+                // Force forward direction with minimum speed
+                filteredVelocity = forwardDirection * minForwardSpeed;
+                finalForwardSpeed = minForwardSpeed;
+                if (debugMode)
+                {
+                    Debug.Log($"[VRGrabThrow] Safety check: Forced forward direction with speed: {minForwardSpeed:F2} m/s");
+                }
+            }
+            
+            throwVelocity = filteredVelocity * throwForce;
+            
+            if (debugMode)
+            {
+                Debug.Log($"[VRGrabThrow] Forward throw - Forward speed: {forwardSpeed:F2} m/s, Final speed: {finalForwardSpeed:F2} m/s, Side filtered: {sideMovement.magnitude * sideMovementFilter:F2} m/s");
+            }
+        }
+        else
+        {
+            // Original behavior: use raw velocity
+            throwVelocity = currentVelocity * throwForce;
+        }
         
         // Apply throw velocity (use linearVelocity for Unity 2023+, velocity for older versions)
         #if UNITY_2023_1_OR_NEWER

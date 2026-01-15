@@ -33,6 +33,7 @@ public class RoundManager : MonoBehaviour
     
     private List<GameObject> currentEnemies = new List<GameObject>();
     private Dictionary<int, List<MovementFrame>> roundMovementData = new Dictionary<int, List<MovementFrame>>();
+    private Dictionary<GameObject, int> enemyRoundAssignments = new Dictionary<GameObject, int>(); // Tracks which round data each enemy uses
     private bool isRoundActive = false;
     private bool gameOver = false;
     private int enemiesSpawnedThisRound = 0; // Track how many enemies were spawned in current round
@@ -125,53 +126,94 @@ public class RoundManager : MonoBehaviour
                 enemySpawner.ClearEnemies();
             }
             currentEnemies.Clear();
+            enemyRoundAssignments.Clear(); // Clear tracking dictionary for fresh start
             enemiesSpawnedThisRound = 0; // Reset counter for Round 1
         }
         // For Round 2+, keep all previous enemies alive (don't clear them)
         // enemiesSpawnedThisRound keeps track of how many were spawned this round
-        
-        // Get movement data for the previous round (to assign to new enemy)
-        List<MovementFrame> previousRoundMovements = null;
-        if (currentRound > 1 && roundMovementData.ContainsKey(currentRound - 1))
+        else
         {
-            previousRoundMovements = roundMovementData[currentRound - 1];
+            // SYNC FIX: For Round 2+, sync our enemy list with EnemySpawner's actual list
+            // This prevents spawning too many enemies if lists are out of sync
+            if (enemySpawner != null)
+            {
+                List<GameObject> actualEnemies = enemySpawner.GetActiveEnemies();
+                currentEnemies = actualEnemies;
+                
+                // Clean up dead enemies from tracking dictionary
+                List<GameObject> deadEnemies = new List<GameObject>();
+                foreach (var kvp in enemyRoundAssignments)
+                {
+                    if (kvp.Key == null || !currentEnemies.Contains(kvp.Key))
+                    {
+                        deadEnemies.Add(kvp.Key);
+                    }
+                }
+                foreach (GameObject deadEnemy in deadEnemies)
+                {
+                    enemyRoundAssignments.Remove(deadEnemy);
+                }
+                
+                if (debugMode)
+                {
+                    Debug.Log($"Round {currentRound}: Synced with EnemySpawner. Actual enemies in scene: {currentEnemies.Count}");
+                }
+            }
+        }
+        
+        // Determine which enemy "slots" need to be filled
+        // Each slot represents a round: slot 1 = Round 1 (static), slot 2 = Round 2 (replays R1), etc.
+        int targetEnemyCount = currentRound;
+        
+        // Build a set of which rounds are already represented by living enemies
+        HashSet<int> existingRoundSlots = new HashSet<int>();
+        foreach (var kvp in enemyRoundAssignments)
+        {
+            if (kvp.Key != null && currentEnemies.Contains(kvp.Key))
+            {
+                existingRoundSlots.Add(kvp.Value);
+            }
         }
         
         if (debugMode)
         {
-            Debug.Log($"Round {currentRound}: Existing enemies: {currentEnemies.Count}, Previous round movements: {(previousRoundMovements != null ? previousRoundMovements.Count : 0)} frames");
+            string existingSlotsStr = existingRoundSlots.Count > 0 ? string.Join(", ", existingRoundSlots) : "none";
+            Debug.Log($"Round {currentRound}: Existing enemy slots: [{existingSlotsStr}], Target slots: 1-{targetEnemyCount}");
         }
         
-        // Spawn enemies until we have the correct number for this round
-        // Round N should have N enemies total (keeping previous ones + adding new ones)
-        int targetEnemyCount = currentRound;
-        int enemiesToSpawn = targetEnemyCount - currentEnemies.Count;
-        
-        if (debugMode && enemiesToSpawn > 0)
+        // Spawn enemies for missing slots
+        if (enemySpawner != null)
         {
-            Debug.Log($"Round {currentRound}: Need {enemiesToSpawn} more enemy/enemies to reach target of {targetEnemyCount} total");
-        }
-        
-        // Spawn new enemies to reach the target count (previous enemies are kept alive)
-        if (enemySpawner != null && enemiesToSpawn > 0)
-        {
-            for (int i = 0; i < enemiesToSpawn; i++)
+            for (int roundSlot = 1; roundSlot <= targetEnemyCount; roundSlot++)
             {
-                // Calculate index for new enemy (based on how many enemies already exist)
-                int newEnemyIndex = currentEnemies.Count;
+                // Skip if this slot is already filled
+                if (existingRoundSlots.Contains(roundSlot))
+                {
+                    continue;
+                }
                 
-                // First enemy in round 1 should be static, all others replay movements
-                bool shouldBeStatic = isFirstRound && newEnemyIndex == 0;
+                // Determine the movement data for this slot
+                // Slot 1 (Round 1) = static, Slot 2 (Round 2) = Round 1 data, Slot N = Round N-1 data
+                List<MovementFrame> movementDataForSlot = null;
+                bool shouldBeStatic = (roundSlot == 1);
                 
+                if (!shouldBeStatic && roundMovementData.ContainsKey(roundSlot - 1))
+                {
+                    movementDataForSlot = roundMovementData[roundSlot - 1];
+                }
+                
+                // Spawn the enemy
+                int enemyIndex = currentEnemies.Count; // Index for spawn position calculation
                 GameObject newEnemy = enemySpawner.SpawnSingleEnemy(
-                    newEnemyIndex, // Index for this enemy (0-based, continues from existing enemies)
-                    previousRoundMovements,
-                    shouldBeStatic // First enemy in round 1 is static, all others replay movements
+                    enemyIndex,
+                    movementDataForSlot,
+                    shouldBeStatic
                 );
                 
                 if (newEnemy != null)
                 {
                     currentEnemies.Add(newEnemy);
+                    enemyRoundAssignments[newEnemy] = roundSlot; // Track which round slot this enemy represents
                     
                     // Subscribe to enemy death event
                     EnemyController controller = newEnemy.GetComponent<EnemyController>();
@@ -182,16 +224,17 @@ public class RoundManager : MonoBehaviour
                     
                     if (debugMode)
                     {
-                        Debug.Log($"Spawned new enemy #{newEnemyIndex + 1} for round {currentRound}. Total enemies: {currentEnemies.Count}");
+                        string dataInfo = shouldBeStatic ? "Static" : $"Round {roundSlot - 1} data ({(movementDataForSlot?.Count ?? 0)} frames)";
+                        Debug.Log($"Spawned enemy for slot {roundSlot} with {dataInfo}. Total enemies: {currentEnemies.Count}");
                     }
                     
-                    enemiesSpawnedThisRound++; // Track that we spawned an enemy this round
+                    enemiesSpawnedThisRound++;
                 }
             }
             
             if (debugMode)
             {
-                Debug.Log($"Round {currentRound}: Spawned {enemiesToSpawn} new enemy/enemies. Total enemies now: {currentEnemies.Count} (target: {targetEnemyCount})");
+                Debug.Log($"Round {currentRound}: Finished spawning. Total enemies: {currentEnemies.Count} (target: {targetEnemyCount})");
             }
         }
         
@@ -217,7 +260,18 @@ public class RoundManager : MonoBehaviour
             currentEnemies.Remove(enemyObj);
         }
         
-        if (debugMode)
+        // Remove from tracking dictionary
+        if (enemyRoundAssignments.ContainsKey(enemyObj))
+        {
+            int defeatedSlot = enemyRoundAssignments[enemyObj];
+            enemyRoundAssignments.Remove(enemyObj);
+            
+            if (debugMode)
+            {
+                Debug.Log($"Enemy defeated (was slot {defeatedSlot})! Remaining: {currentEnemies.Count}");
+            }
+        }
+        else if (debugMode)
         {
             Debug.Log($"Enemy defeated! Remaining: {currentEnemies.Count}");
         }
