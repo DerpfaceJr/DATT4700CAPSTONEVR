@@ -8,8 +8,11 @@ using System.Collections.Generic;
 public class EnemySpawner : MonoBehaviour
 {
     [Header("Enemy Prefab Settings")]
-    [Tooltip("Enemy prefab to spawn (must have EnemyController component)")]
+    [Tooltip("Basic enemy prefab for static enemies (Round 1) - simple cube/mesh")]
     public GameObject enemyPrefab;
+    
+    [Tooltip("Rigged character prefab for replay enemies (Round 2+) - must have IKTargetFollowVRRig")]
+    public GameObject riggedEnemyPrefab;
     
     [Tooltip("Enemy material (red for visibility) - only used if prefab not assigned")]
     public Material enemyMaterial;
@@ -89,11 +92,26 @@ public class EnemySpawner : MonoBehaviour
     {
         GameObject enemy;
         
+        // Determine which prefab to use based on enemy type
+        bool shouldBeStatic = isFirstRound && index == 0;
+        GameObject prefabToUse = null;
+        
+        if (shouldBeStatic)
+        {
+            // Static enemy (Round 1 first enemy) - use basic enemy prefab
+            prefabToUse = enemyPrefab;
+        }
+        else
+        {
+            // Replay enemy (Round 2+) - use rigged character prefab
+            prefabToUse = riggedEnemyPrefab != null ? riggedEnemyPrefab : enemyPrefab;
+        }
+        
         // Use prefab if assigned, otherwise create procedurally
-        if (enemyPrefab != null)
+        if (prefabToUse != null)
         {
             // Instantiate from prefab
-            enemy = Instantiate(enemyPrefab);
+            enemy = Instantiate(prefabToUse);
             enemy.name = $"Enemy_Round{index + 1}";
         }
         else
@@ -157,16 +175,32 @@ public class EnemySpawner : MonoBehaviour
         if (rb == null)
         {
             rb = enemy.AddComponent<Rigidbody>();
-            rb.mass = 1f;
+            rb.mass = 70f; // Typical human weight
             rb.useGravity = true; // Ensure gravity is enabled
             rb.isKinematic = false; // Must be non-kinematic for gravity to work
             rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous; // Better collision detection
         }
         else
         {
             // Ensure gravity is enabled and not kinematic on existing Rigidbody
             rb.useGravity = true;
             rb.isKinematic = false; // Must be non-kinematic for gravity to work
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        }
+        
+        // Ensure enemy has a collider for physics and combat
+        Collider collider = enemy.GetComponent<Collider>();
+        if (collider == null)
+        {
+            // Add CapsuleCollider for rigged characters (encompasses body)
+            CapsuleCollider capsule = enemy.AddComponent<CapsuleCollider>();
+            capsule.center = new Vector3(0f, 1f, 0f); // Center at body height
+            capsule.radius = 0.4f; // Wide enough for body
+            capsule.height = 1.8f; // Typical human height
+            capsule.direction = 1; // Y-axis (vertical)
+            
+            Debug.Log($"Added CapsuleCollider to enemy {enemy.name}: center={capsule.center}, radius={capsule.radius}, height={capsule.height}");
         }
         
         // Ensure enemy is red (if using prefab, check material)
@@ -208,13 +242,13 @@ public class EnemySpawner : MonoBehaviour
             combatSystem.damageMultiplier = 1f;
             combatSystem.minDamageVelocity = 2f;
             combatSystem.instakillEnabled = true; // Enable instakill by default
-            combatSystem.instakillMinVelocity = 0.5f; // Low threshold for easy instakills
+            combatSystem.instakillMinVelocity = 1.5f; // Prevent death from touching static objects
         }
         else
         {
             // Ensure instakill is enabled on existing CombatSystem
             combatSystem.instakillEnabled = true;
-            combatSystem.instakillMinVelocity = 0.5f;
+            combatSystem.instakillMinVelocity = 1.5f; // Prevent death from touching static objects
         }
         
         // Check if enemy has rigged character model (has IKTargetFollowVRRig component)
