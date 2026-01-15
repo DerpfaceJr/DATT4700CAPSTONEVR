@@ -53,16 +53,29 @@ public class PlayerRespawner : MonoBehaviour
     /// </summary>
     private void CalculateSpawnBounds()
     {
-        // Find walls to determine map boundaries
+        // Find walls to determine map boundaries (active walls first)
         GameObject westWall = GameObject.Find("WestWall");
         GameObject eastWall = GameObject.Find("EastWall");
         GameObject northWall = GameObject.Find("NorthWall");
         GameObject southWall = GameObject.Find("SouthWall");
         
-        float minX = -2.5f; // Default values if walls not found
-        float maxX = 2.5f;
-        float minZ = -2.5f;
-        float maxZ = 2.5f;
+        // Fallback: search inactive walls if not found
+        if (westWall == null || eastWall == null || northWall == null || southWall == null)
+        {
+            Transform[] allTransforms = FindObjectsOfType<Transform>(true);
+            foreach (Transform t in allTransforms)
+            {
+                if (westWall == null && t.name == "WestWall") westWall = t.gameObject;
+                if (eastWall == null && t.name == "EastWall") eastWall = t.gameObject;
+                if (northWall == null && t.name == "NorthWall") northWall = t.gameObject;
+                if (southWall == null && t.name == "SouthWall") southWall = t.gameObject;
+            }
+        }
+        
+        float minX = -10f; // Default values if walls not found (20x20 map)
+        float maxX = 10f;
+        float minZ = -10f;
+        float maxZ = 10f;
         
         if (westWall != null)
         {
