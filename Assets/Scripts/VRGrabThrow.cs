@@ -43,7 +43,22 @@ public class VRGrabThrow : MonoBehaviour
     
     [Tooltip("Side movement filter (0-1, higher = more filtering, 1.0 = forward only)")]
     [Range(0f, 1f)]
-    public float sideMovementFilter = 0.9f;
+    public float sideMovementFilter = 0.95f;
+    
+    [Header("Stability Settings")]
+    [Tooltip("Velocity history buffer size (more = smoother but less responsive)")]
+    [Range(5, 20)]
+    public int velocityHistorySize = 10;
+    
+    [Tooltip("Velocity smoothing factor (0-1, higher = more smoothing, reduces jitter)")]
+    [Range(0f, 1f)]
+    public float velocitySmoothing = 0.8f;
+    
+    [Tooltip("Dead zone for tiny movements (filters out jitter)")]
+    public float movementDeadZone = 0.05f;
+    
+    [Tooltip("Use weighted average (recent frames weighted more)")]
+    public bool useWeightedAverage = true;
     
     private Rigidbody grabbedObject = null;
     private Transform grabPoint = null;
@@ -51,7 +66,8 @@ public class VRGrabThrow : MonoBehaviour
     private bool isGrabbing = false;
     private Vector3 previousPosition;
     private Vector3 currentVelocity;
-    private Vector3[] velocityHistory = new Vector3[5];
+    private Vector3 smoothedVelocity;
+    private Vector3[] velocityHistory;
     private int velocityIndex = 0;
     private float lastGripValue = 0f;
     private float lastTriggerValue = 0f;
@@ -85,6 +101,8 @@ public class VRGrabThrow : MonoBehaviour
         
         // Initialize velocity tracking
         previousPosition = transform.position;
+        velocityHistory = new Vector3[velocityHistorySize];
+        smoothedVelocity = Vector3.zero;
         for (int i = 0; i < velocityHistory.Length; i++)
         {
             velocityHistory[i] = Vector3.zero;
@@ -225,16 +243,57 @@ public class VRGrabThrow : MonoBehaviour
         if (Time.deltaTime > 0)
         {
             Vector3 frameVelocity = (transform.position - previousPosition) / Time.deltaTime;
+            
+            // Apply dead zone to filter out tiny jittery movements
+            if (frameVelocity.magnitude < movementDeadZone)
+            {
+                frameVelocity = Vector3.zero;
+            }
+            
             velocityHistory[velocityIndex] = frameVelocity;
             velocityIndex = (velocityIndex + 1) % velocityHistory.Length;
             
-            // Calculate average velocity
-            Vector3 avgVelocity = Vector3.zero;
-            for (int i = 0; i < velocityHistory.Length; i++)
+            // Calculate smoothed velocity
+            Vector3 avgVelocity;
+            if (useWeightedAverage)
             {
-                avgVelocity += velocityHistory[i];
+                // Weighted average: recent frames have more weight
+                avgVelocity = Vector3.zero;
+                float totalWeight = 0f;
+                for (int i = 0; i < velocityHistory.Length; i++)
+                {
+                    // Calculate frame age (0 = most recent, velocityHistory.Length-1 = oldest)
+                    int frameAge = (velocityIndex - 1 - i + velocityHistory.Length) % velocityHistory.Length;
+                    float weight = 1f / (1f + frameAge * 0.5f); // Exponential decay
+                    avgVelocity += velocityHistory[i] * weight;
+                    totalWeight += weight;
+                }
+                if (totalWeight > 0.001f)
+                {
+                    avgVelocity /= totalWeight;
+                }
             }
-            currentVelocity = avgVelocity / velocityHistory.Length;
+            else
+            {
+                // Simple average
+                avgVelocity = Vector3.zero;
+                for (int i = 0; i < velocityHistory.Length; i++)
+                {
+                    avgVelocity += velocityHistory[i];
+                }
+                avgVelocity /= velocityHistory.Length;
+            }
+            
+            // Apply exponential smoothing for extra stability
+            if (velocitySmoothing > 0f)
+            {
+                smoothedVelocity = Vector3.Lerp(smoothedVelocity, avgVelocity, 1f - velocitySmoothing);
+                currentVelocity = smoothedVelocity;
+            }
+            else
+            {
+                currentVelocity = avgVelocity;
+            }
         }
         
         previousPosition = transform.position;
