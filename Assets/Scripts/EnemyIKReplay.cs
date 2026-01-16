@@ -24,8 +24,8 @@ public class EnemyIKReplay : MonoBehaviour
     private float replayStartTime = 0f;
     private bool isReplaying = false;
     private Rigidbody rb; // Cache Rigidbody for physics-based movement
-    private float groundLevel = 0f; // Store ground level after initial contact
-    private bool hasGroundContact = false; // Track if we've made initial ground contact
+    private float minYPosition = 0f; // Minimum Y position to prevent clipping through floor
+    private bool hasEstablishedMinY = false; // Track if we've established the minimum Y
     
     void Start()
     {
@@ -34,6 +34,22 @@ public class EnemyIKReplay : MonoBehaviour
         if (rb == null)
         {
             rb = GetComponentInParent<Rigidbody>();
+        }
+        
+        // Calculate minimum Y position based on collider to prevent floor clipping
+        CapsuleCollider capsule = GetComponent<CapsuleCollider>();
+        if (capsule != null)
+        {
+            // Minimum Y is where the bottom of the collider should be at ground level (Y=0)
+            // Bottom of collider = center.y - (height/2)
+            // For character to stand on ground, root Y should be: 0 + (center.y - height/2)
+            minYPosition = capsule.center.y - (capsule.height / 2f);
+            Debug.Log($"EnemyIKReplay: Set minimum Y position = {minYPosition} (collider center.y={capsule.center.y}, height={capsule.height})");
+        }
+        else
+        {
+            minYPosition = 0.1f; // Small default offset
+            Debug.LogWarning($"EnemyIKReplay: No CapsuleCollider found, using default min Y = {minYPosition}");
         }
         
         // Find IK rig if not assigned
@@ -57,7 +73,7 @@ public class EnemyIKReplay : MonoBehaviour
         if (isReplaying && movementData.Count > 0)
         {
             ApplyFrame(movementData[0]);
-            Debug.Log($"EnemyIKReplay on {gameObject.name}: Started replay with {movementData.Count} frames, Rigidbody={(rb != null ? "found" : "not found")}");
+            Debug.Log($"EnemyIKReplay on {gameObject.name}: Started replay with {movementData.Count} frames, using recorded Y position with floor constraint. Rigidbody={(rb != null ? "found" : "not found")}");
         }
         else
         {
@@ -77,10 +93,10 @@ public class EnemyIKReplay : MonoBehaviour
             return;
         }
         
-        // Check for ground contact and establish stable ground level
-        if (!hasGroundContact)
+        // Establish minimum Y position after landing (detect ground once)
+        if (!hasEstablishedMinY)
         {
-            CheckGroundContact();
+            EstablishGroundLevel();
         }
         
         // Calculate current replay time (relative time since replay started)
@@ -139,24 +155,29 @@ public class EnemyIKReplay : MonoBehaviour
     }
     
     /// <summary>
-    /// Check for ground contact and establish stable ground level
+    /// Establish ground level after character has landed
     /// </summary>
-    private void CheckGroundContact()
+    private void EstablishGroundLevel()
     {
-        // Raycast downward to find ground
-        RaycastHit hit;
-        if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down, out hit, 2f))
+        // Check if character has landed (low velocity or raycast hit)
+        if (rb != null && rb.linearVelocity.magnitude < 0.2f)
         {
-            groundLevel = hit.point.y;
-            hasGroundContact = true;
-            Debug.Log($"EnemyIKReplay: Ground contact established at Y={groundLevel}");
-        }
-        // Also check if rigidbody has settled (low velocity = on ground)
-        else if (rb != null && rb.linearVelocity.magnitude < 0.1f)
-        {
-            groundLevel = transform.position.y;
-            hasGroundContact = true;
-            Debug.Log($"EnemyIKReplay: Ground contact established via velocity check at Y={groundLevel}");
+            // Use raycast to find actual ground level
+            RaycastHit hit;
+            if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down, out hit, 2f))
+            {
+                // Update minimum Y to actual ground level detected
+                minYPosition = hit.point.y + (minYPosition > 0 ? minYPosition : 0.1f);
+                hasEstablishedMinY = true;
+                Debug.Log($"EnemyIKReplay: Established ground level at Y={minYPosition} (detected ground at {hit.point.y})");
+            }
+            else if (transform.position.y < minYPosition + 0.5f)
+            {
+                // Character is close to expected ground level, accept current position
+                minYPosition = Mathf.Max(transform.position.y, minYPosition);
+                hasEstablishedMinY = true;
+                Debug.Log($"EnemyIKReplay: Established ground level at Y={minYPosition} (from current position)");
+            }
         }
     }
     
@@ -165,21 +186,24 @@ public class EnemyIKReplay : MonoBehaviour
     /// </summary>
     private void ApplyFrame(MovementFrame frame)
     {
-        // Apply root transform - only horizontal (X, Z) movement, maintain stable ground level
+        // Apply root transform using the recorded position (includes Y position)
+        // Use recorded Y position but constrain to minimum to prevent floor clipping
         Vector3 targetPos = frame.position;
-        // Use established ground level if available, otherwise preserve current Y
-        float yPos = hasGroundContact ? groundLevel : transform.position.y;
-        Vector3 horizontalPos = new Vector3(targetPos.x, yPos, targetPos.z);
+        
+        // Constrain Y position to not go below minimum (prevents clipping through floor)
+        // Use recorded Y if it's above minimum, otherwise use minimum
+        float constrainedY = Mathf.Max(targetPos.y, minYPosition);
+        Vector3 constrainedPos = new Vector3(targetPos.x, constrainedY, targetPos.z);
         
         if (rb != null && !rb.isKinematic)
         {
-            rb.MovePosition(horizontalPos);
+            rb.MovePosition(constrainedPos);
             rb.MoveRotation(frame.rotation);
         }
         else
         {
             // Fallback to direct transform if no Rigidbody or kinematic
-            transform.position = horizontalPos;
+            transform.position = constrainedPos;
             transform.rotation = frame.rotation;
         }
         
@@ -214,22 +238,24 @@ public class EnemyIKReplay : MonoBehaviour
     /// </summary>
     private void ApplyFrameInterpolated(MovementFrame current, MovementFrame next, float t)
     {
-        // Interpolate root transform - only horizontal (X, Z) movement, maintain stable ground level
+        // Interpolate root transform using recorded positions (includes Y position)
+        // Use recorded Y position but constrain to minimum to prevent floor clipping
         Vector3 targetPosition = Vector3.Lerp(current.position, next.position, t);
-        // Use established ground level if available, otherwise preserve current Y
-        float yPos = hasGroundContact ? groundLevel : transform.position.y;
-        Vector3 horizontalPos = new Vector3(targetPosition.x, yPos, targetPosition.z);
         Quaternion targetRotation = Quaternion.Slerp(current.rotation, next.rotation, t);
+        
+        // Constrain Y position to not go below minimum (prevents clipping through floor)
+        float constrainedY = Mathf.Max(targetPosition.y, minYPosition);
+        Vector3 constrainedPos = new Vector3(targetPosition.x, constrainedY, targetPosition.z);
         
         if (rb != null && !rb.isKinematic)
         {
-            rb.MovePosition(horizontalPos);
+            rb.MovePosition(constrainedPos);
             rb.MoveRotation(targetRotation);
         }
         else
         {
             // Fallback to direct transform if no Rigidbody or kinematic
-            transform.position = horizontalPos;
+            transform.position = constrainedPos;
             transform.rotation = targetRotation;
         }
         

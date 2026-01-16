@@ -121,6 +121,9 @@ public class EnemySpawner : MonoBehaviour
             enemy.name = $"Enemy_Round{index + 1}";
         }
         
+        // Set enemy tag (important: rigged enemies from Player prefab need this!)
+        enemy.tag = "Enemy";
+        
         // Ensure required components exist
         EnsureEnemyComponents(enemy, index, movementData, isFirstRound);
         
