@@ -37,6 +37,7 @@ public class RoundManager : MonoBehaviour
     private bool isRoundActive = false;
     private bool gameOver = false;
     private int enemiesSpawnedThisRound = 0; // Track how many enemies were spawned in current round
+    private bool waitingForCutscene = false; // Track if we're waiting for cutscene to finish
     
     // Events
     public event Action<int> OnRoundStart;
@@ -332,8 +333,22 @@ public class RoundManager : MonoBehaviour
         // Trigger round complete event
         OnRoundComplete?.Invoke(currentRound);
         
-        // Advance to next round
-        StartRound(currentRound + 1);
+        // Check if there's a cutscene system that will handle the delay
+        RoundCompleteCutscene cutscene = FindObjectOfType<RoundCompleteCutscene>();
+        if (cutscene != null)
+        {
+            // Cutscene will call ContinueToNextRound() when done
+            waitingForCutscene = true;
+            if (debugMode)
+            {
+                Debug.Log("Waiting for cutscene to finish before starting next round...");
+            }
+        }
+        else
+        {
+            // No cutscene, advance immediately
+            StartRound(currentRound + 1);
+        }
     }
     
     /// <summary>
@@ -407,6 +422,18 @@ public class RoundManager : MonoBehaviour
     {
         currentEnemies.RemoveAll(e => e == null);
         return currentEnemies.Count;
+    }
+    
+    /// <summary>
+    /// Continue to the next round (called by cutscene when finished)
+    /// </summary>
+    public void ContinueToNextRound()
+    {
+        if (waitingForCutscene)
+        {
+            waitingForCutscene = false;
+            StartRound(currentRound + 1);
+        }
     }
 }
 
