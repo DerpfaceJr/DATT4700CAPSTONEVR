@@ -1112,6 +1112,18 @@ public class VRGrabThrow : MonoBehaviour
             Debug.Log($"[VRGrabThrow] Released {rbToRelease.name} with velocity: {throwVelocity.magnitude:F2} m/s");
         }
         
+        // Track the throw for projectile replay system
+        ProjectileThrowTracker tracker = FindObjectOfType<ProjectileThrowTracker>();
+        if (tracker != null)
+        {
+            tracker.TrackObject(rbToRelease.gameObject);
+            Debug.Log($"[VRGrabThrow] Tracking {rbToRelease.name} for projectile replay");
+        }
+        else
+        {
+            Debug.LogWarning("[VRGrabThrow] No ProjectileThrowTracker found! Throws will not be recorded for enemy replay.");
+        }
+        
         grabbedObject = null;
         isGrabbing = false;
     }

@@ -24,6 +24,9 @@ public class RoundManager : MonoBehaviour
     [Tooltip("Player respawner")]
     public PlayerRespawner playerRespawner;
     
+    [Tooltip("Object position resetter (optional - will auto-find if not assigned)")]
+    public ObjectPositionResetter objectResetter;
+    
     [Header("Player Death Settings")]
     [Tooltip("GameObject to check for player death (XR Origin)")]
     public GameObject playerObject;
@@ -61,6 +64,15 @@ public class RoundManager : MonoBehaviour
         if (playerRespawner == null)
         {
             playerRespawner = FindObjectOfType<PlayerRespawner>();
+        }
+        
+        if (objectResetter == null)
+        {
+            objectResetter = FindObjectOfType<ObjectPositionResetter>();
+            if (objectResetter != null)
+            {
+                Debug.Log("RoundManager: Found ObjectPositionResetter");
+            }
         }
         
         if (playerObject == null)
@@ -111,6 +123,13 @@ public class RoundManager : MonoBehaviour
         if (playerRespawner != null)
         {
             playerRespawner.RespawnPlayer();
+        }
+        
+        // Reset throwable objects and weapons to starting positions
+        if (objectResetter != null)
+        {
+            objectResetter.ResetObjects();
+            Debug.Log($"Round {currentRound}: Reset all throwable objects and weapons");
         }
         
         // Remove null enemies (destroyed)

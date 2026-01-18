@@ -19,6 +19,13 @@ public class MovementFrame
     public Vector3 rightHandPosition;
     public Quaternion rightHandRotation;
     
+    // Projectile throw data
+    public bool hasThrowEvent; // Whether a throw occurred at this frame
+    public string thrownObjectPrefabName; // Name/path of thrown object for spawning
+    public Vector3 throwPosition; // Position where throw originated
+    public Vector3 throwVelocity; // Velocity vector of the throw
+    public Quaternion throwRotation; // Rotation of thrown object
+    
     public MovementFrame(float time, Vector3 pos, Quaternion rot)
     {
         timestamp = time;
@@ -31,6 +38,12 @@ public class MovementFrame
         leftHandRotation = Quaternion.identity;
         rightHandPosition = Vector3.zero;
         rightHandRotation = Quaternion.identity;
+        // Default throw data
+        hasThrowEvent = false;
+        thrownObjectPrefabName = "";
+        throwPosition = Vector3.zero;
+        throwVelocity = Vector3.zero;
+        throwRotation = Quaternion.identity;
     }
     
     /// <summary>
@@ -50,6 +63,24 @@ public class MovementFrame
         leftHandRotation = leftHandRot;
         rightHandPosition = rightHandPos;
         rightHandRotation = rightHandRot;
+        // Default throw data
+        hasThrowEvent = false;
+        thrownObjectPrefabName = "";
+        throwPosition = Vector3.zero;
+        throwVelocity = Vector3.zero;
+        throwRotation = Quaternion.identity;
+    }
+    
+    /// <summary>
+    /// Add throw event data to this frame
+    /// </summary>
+    public void AddThrowEvent(string prefabName, Vector3 throwPos, Vector3 velocity, Quaternion throwRot)
+    {
+        hasThrowEvent = true;
+        thrownObjectPrefabName = prefabName;
+        throwPosition = throwPos;
+        throwVelocity = velocity;
+        throwRotation = throwRot;
     }
 }
 

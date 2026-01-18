@@ -14,6 +14,10 @@ public class EnemySpawner : MonoBehaviour
     [Tooltip("Rigged character prefab for replay enemies (Round 2+) - must have IKTargetFollowVRRig")]
     public GameObject riggedEnemyPrefab;
     
+    [Header("Projectile Settings")]
+    [Tooltip("Enemy Ball prefab for enemy projectile replay")]
+    public GameObject enemyBallPrefab;
+    
     [Tooltip("Enemy material (red for visibility) - only used if prefab not assigned")]
     public Material enemyMaterial;
     
@@ -205,9 +209,13 @@ public class EnemySpawner : MonoBehaviour
         {
             // Add CapsuleCollider for rigged characters (encompasses body)
             CapsuleCollider capsule = enemy.AddComponent<CapsuleCollider>();
-            capsule.center = new Vector3(0f, 1.05f, 0f); // Center slightly higher to prevent ground penetration
+            
+            // Set collider for standing character with hips at Y=1.0
+            // Collider center at Y=-1.0 as requested by user
+            // This positions the collider lower to match the visual body better
+            capsule.center = new Vector3(0f, -1.0f, 0f); // Center below root (user requested Y=-1)
             capsule.radius = 0.35f; // Slightly narrower for more precise hits
-            capsule.height = 1.9f; // Slightly taller
+            capsule.height = 2.0f; // Full standing height
             capsule.direction = 1; // Y-axis (vertical)
             
             Debug.Log($"Added CapsuleCollider to enemy {enemy.name}: center={capsule.center}, radius={capsule.radius}, height={capsule.height}");
@@ -325,6 +333,29 @@ public class EnemySpawner : MonoBehaviour
                 // Set IK rig reference
                 enemyIKReplay.ikRig = enemyIKRig;
                 enemyIKReplay.useInterpolation = true;
+                
+                // Assign Enemy Ball prefab for projectile replay
+                if (enemyBallPrefab != null)
+                {
+                    enemyIKReplay.enemyBallPrefab = enemyBallPrefab;
+                    Debug.Log($"Enemy {index + 1} (Rigged): Assigned Enemy Ball prefab for projectile replay");
+                }
+                else
+                {
+                    Debug.LogWarning($"Enemy {index + 1} (Rigged): No Enemy Ball prefab assigned! Enemy will not be able to throw projectiles.");
+                }
+                
+                // Fix leg bone positions (ensure LeftUpLeg and RightUpLeg are separated from spine)
+                LegBonePositionFixer legFixer = enemy.GetComponent<LegBonePositionFixer>();
+                if (legFixer == null)
+                {
+                    legFixer = enemy.AddComponent<LegBonePositionFixer>();
+                }
+                legFixer.hipWidth = 0.2f; // Standard hip width
+                legFixer.legForwardOffset = 0.05f; // Slight forward offset
+                legFixer.autoFixOnStart = true;
+                legFixer.showDebugInfo = true;
+                Debug.Log($"Enemy {index + 1} (Rigged): Added LegBonePositionFixer to ensure proper leg positioning");
                 
                 // Verify IK targets are assigned
                 if (enemyIKRig != null)

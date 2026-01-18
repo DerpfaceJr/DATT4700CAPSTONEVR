@@ -11,6 +11,10 @@ public class EnemyIKReplay : MonoBehaviour
     [Tooltip("IK rig component on this enemy character")]
     public IKTargetFollowVRRig ikRig;
     
+    [Header("Character Positioning")]
+    [Tooltip("Y position for character hips/root (adjustable for height calibration)")]
+    public float hipHeight = 1.0f;
+    
     [Header("Replay Settings")]
     [Tooltip("Movement data to replay")]
     public List<MovementFrame> movementData;
@@ -21,11 +25,23 @@ public class EnemyIKReplay : MonoBehaviour
     [Tooltip("Use interpolation between frames")]
     public bool useInterpolation = true;
     
+    [Header("Projectile Replay")]
+    [Tooltip("Enemy Ball prefab for spawning thrown objects")]
+    public GameObject enemyBallPrefab;
+    
+    [Tooltip("Material for shadow projectiles (optional - will be gray if not set)")]
+    public Material shadowProjectileMaterial;
+    
+    [Tooltip("Tag for enemy-thrown projectiles")]
+    public string enemyProjectileTag = "EnemyProjectile";
+    
+    [Tooltip("Layer for enemy projectiles (to prevent player pickup)")]
+    public string enemyProjectileLayer = "EnemyProjectile";
+    
     private float replayStartTime = 0f;
     private bool isReplaying = false;
     private Rigidbody rb; // Cache Rigidbody for physics-based movement
-    private float minYPosition = 0f; // Minimum Y position to prevent clipping through floor
-    private bool hasEstablishedMinY = false; // Track if we've established the minimum Y
+    private HashSet<float> processedThrowTimestamps = new HashSet<float>(); // Track which throws we've already processed
     
     void Start()
     {
@@ -34,22 +50,6 @@ public class EnemyIKReplay : MonoBehaviour
         if (rb == null)
         {
             rb = GetComponentInParent<Rigidbody>();
-        }
-        
-        // Calculate minimum Y position based on collider to prevent floor clipping
-        CapsuleCollider capsule = GetComponent<CapsuleCollider>();
-        if (capsule != null)
-        {
-            // Minimum Y is where the bottom of the collider should be at ground level (Y=0)
-            // Bottom of collider = center.y - (height/2)
-            // For character to stand on ground, root Y should be: 0 + (center.y - height/2)
-            minYPosition = capsule.center.y - (capsule.height / 2f);
-            Debug.Log($"EnemyIKReplay: Set minimum Y position = {minYPosition} (collider center.y={capsule.center.y}, height={capsule.height})");
-        }
-        else
-        {
-            minYPosition = 0.1f; // Small default offset
-            Debug.LogWarning($"EnemyIKReplay: No CapsuleCollider found, using default min Y = {minYPosition}");
         }
         
         // Find IK rig if not assigned
@@ -73,7 +73,7 @@ public class EnemyIKReplay : MonoBehaviour
         if (isReplaying && movementData.Count > 0)
         {
             ApplyFrame(movementData[0]);
-            Debug.Log($"EnemyIKReplay on {gameObject.name}: Started replay with {movementData.Count} frames, using recorded Y position with floor constraint. Rigidbody={(rb != null ? "found" : "not found")}");
+            Debug.Log($"EnemyIKReplay on {gameObject.name}: Started replay with {movementData.Count} frames, hip height={hipHeight}. Rigidbody={(rb != null ? "found" : "not found")}");
         }
         else
         {
@@ -91,12 +91,6 @@ public class EnemyIKReplay : MonoBehaviour
         if (ikRig == null)
         {
             return;
-        }
-        
-        // Establish minimum Y position after landing (detect ground once)
-        if (!hasEstablishedMinY)
-        {
-            EstablishGroundLevel();
         }
         
         // Calculate current replay time (relative time since replay started)
@@ -151,59 +145,37 @@ public class EnemyIKReplay : MonoBehaviour
             {
                 ApplyFrame(currentFrame);
             }
+            
+            // Check for throw events in current frame
+            if (currentFrame.hasThrowEvent && !processedThrowTimestamps.Contains(currentFrame.timestamp))
+            {
+                ProcessThrowEvent(currentFrame);
+                processedThrowTimestamps.Add(currentFrame.timestamp);
+            }
         }
     }
     
-    /// <summary>
-    /// Establish ground level after character has landed
-    /// </summary>
-    private void EstablishGroundLevel()
-    {
-        // Check if character has landed (low velocity or raycast hit)
-        if (rb != null && rb.linearVelocity.magnitude < 0.2f)
-        {
-            // Use raycast to find actual ground level
-            RaycastHit hit;
-            if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down, out hit, 2f))
-            {
-                // Update minimum Y to actual ground level detected
-                minYPosition = hit.point.y + (minYPosition > 0 ? minYPosition : 0.1f);
-                hasEstablishedMinY = true;
-                Debug.Log($"EnemyIKReplay: Established ground level at Y={minYPosition} (detected ground at {hit.point.y})");
-            }
-            else if (transform.position.y < minYPosition + 0.5f)
-            {
-                // Character is close to expected ground level, accept current position
-                minYPosition = Mathf.Max(transform.position.y, minYPosition);
-                hasEstablishedMinY = true;
-                Debug.Log($"EnemyIKReplay: Established ground level at Y={minYPosition} (from current position)");
-            }
-        }
-    }
     
     /// <summary>
     /// Apply a single frame of movement data
     /// </summary>
     private void ApplyFrame(MovementFrame frame)
     {
-        // Apply root transform using the recorded position (includes Y position)
-        // Use recorded Y position but constrain to minimum to prevent floor clipping
+        // Apply root transform using the recorded position
+        // Override Y position with hipHeight for consistent character height
         Vector3 targetPos = frame.position;
+        targetPos.y = hipHeight; // Use adjustable hip height instead of recorded Y
         
-        // Constrain Y position to not go below minimum (prevents clipping through floor)
-        // Use recorded Y if it's above minimum, otherwise use minimum
-        float constrainedY = Mathf.Max(targetPos.y, minYPosition);
-        Vector3 constrainedPos = new Vector3(targetPos.x, constrainedY, targetPos.z);
-        
+        // No Y constraint - let IK system handle leg positions naturally
         if (rb != null && !rb.isKinematic)
         {
-            rb.MovePosition(constrainedPos);
+            rb.MovePosition(targetPos);
             rb.MoveRotation(frame.rotation);
         }
         else
         {
             // Fallback to direct transform if no Rigidbody or kinematic
-            transform.position = constrainedPos;
+            transform.position = targetPos;
             transform.rotation = frame.rotation;
         }
         
@@ -238,24 +210,23 @@ public class EnemyIKReplay : MonoBehaviour
     /// </summary>
     private void ApplyFrameInterpolated(MovementFrame current, MovementFrame next, float t)
     {
-        // Interpolate root transform using recorded positions (includes Y position)
-        // Use recorded Y position but constrain to minimum to prevent floor clipping
+        // Interpolate root transform using recorded positions
+        // Override Y position with hipHeight for consistent character height
         Vector3 targetPosition = Vector3.Lerp(current.position, next.position, t);
+        targetPosition.y = hipHeight; // Use adjustable hip height instead of recorded Y
+        
         Quaternion targetRotation = Quaternion.Slerp(current.rotation, next.rotation, t);
         
-        // Constrain Y position to not go below minimum (prevents clipping through floor)
-        float constrainedY = Mathf.Max(targetPosition.y, minYPosition);
-        Vector3 constrainedPos = new Vector3(targetPosition.x, constrainedY, targetPosition.z);
-        
+        // No Y constraint - let IK system handle leg positions naturally
         if (rb != null && !rb.isKinematic)
         {
-            rb.MovePosition(constrainedPos);
+            rb.MovePosition(targetPosition);
             rb.MoveRotation(targetRotation);
         }
         else
         {
             // Fallback to direct transform if no Rigidbody or kinematic
-            transform.position = constrainedPos;
+            transform.position = targetPosition;
             transform.rotation = targetRotation;
         }
         
@@ -307,10 +278,202 @@ public class EnemyIKReplay : MonoBehaviour
     public void ResetReplay()
     {
         replayStartTime = Time.time;
+        processedThrowTimestamps.Clear(); // Reset processed throws
         if (isReplaying && movementData != null && movementData.Count > 0)
         {
             ApplyFrame(movementData[0]);
         }
+    }
+    
+    /// <summary>
+    /// Process a throw event from recorded movement data
+    /// </summary>
+    private void ProcessThrowEvent(MovementFrame frame)
+    {
+        if (string.IsNullOrEmpty(frame.thrownObjectPrefabName))
+        {
+            Debug.LogWarning($"EnemyIKReplay: Throw event has no prefab name at time {frame.timestamp}");
+            return;
+        }
+        
+        // Always use Enemy Ball prefab for shadow projectiles
+        if (enemyBallPrefab == null)
+        {
+            Debug.LogError($"EnemyIKReplay: Enemy Ball prefab not assigned! Cannot spawn projectile.");
+            return;
+        }
+        
+        // Spawn and throw the shadow projectile
+        SpawnAndThrowProjectile(enemyBallPrefab, frame);
+    }
+    
+    /// <summary>
+    /// Find a throwable prefab from the pool by name (DEPRECATED - now uses Enemy Ball only)
+    /// </summary>
+    private GameObject FindThrowablePrefab(string prefabName)
+    {
+        // Always return Enemy Ball prefab
+        return enemyBallPrefab;
+    }
+    
+    /// <summary>
+    /// Spawn a new projectile and throw it (shadow version that can't be picked up)
+    /// </summary>
+    private void SpawnAndThrowProjectile(GameObject prefab, MovementFrame frame)
+    {
+        // Instantiate the shadow projectile (Enemy Ball)
+        GameObject projectile = Instantiate(prefab, frame.throwPosition, frame.throwRotation);
+        projectile.name = "Enemy Ball (Shadow)";
+        
+        // Tag it as enemy projectile
+        projectile.tag = enemyProjectileTag;
+        
+        // Set layer to prevent player pickup (if layer exists)
+        int enemyProjectileLayerIndex = LayerMask.NameToLayer(enemyProjectileLayer);
+        if (enemyProjectileLayerIndex >= 0)
+        {
+            projectile.layer = enemyProjectileLayerIndex;
+        }
+        
+        // Make it visually distinct (shadow appearance)
+        MakeShadowProjectile(projectile);
+        
+        // Remove or disable any grab components to prevent pickup
+        DisablePlayerGrabbing(projectile);
+        
+        // Apply throw velocity
+        Rigidbody projectileRb = projectile.GetComponent<Rigidbody>();
+        if (projectileRb != null)
+        {
+            projectileRb.linearVelocity = frame.throwVelocity;
+            projectileRb.angularVelocity = Vector3.zero; // Reset rotation for clean throw
+        }
+        
+        // Ensure it has BuildingBlockProjectile component for damage
+        BuildingBlockProjectile projectileScript = projectile.GetComponent<BuildingBlockProjectile>();
+        if (projectileScript == null)
+        {
+            projectileScript = projectile.AddComponent<BuildingBlockProjectile>();
+        }
+        
+        // Make it able to hurt the player
+        MakeProjectileHurtPlayer(projectile);
+        
+        Debug.Log($"EnemyIKReplay: Enemy threw shadow projectile from {frame.throwPosition} with velocity {frame.throwVelocity.magnitude:F2} m/s");
+    }
+    
+    /// <summary>
+    /// Make projectile appear as a shadow (visual feedback)
+    /// </summary>
+    private void MakeShadowProjectile(GameObject projectile)
+    {
+        // Get all renderers on the projectile
+        Renderer[] renderers = projectile.GetComponentsInChildren<Renderer>();
+        
+        foreach (Renderer renderer in renderers)
+        {
+            if (shadowProjectileMaterial != null)
+            {
+                // Use custom shadow material if provided
+                renderer.material = shadowProjectileMaterial;
+            }
+            else
+            {
+                // Default: make it semi-transparent dark gray
+                Material shadowMat = new Material(renderer.material);
+                shadowMat.color = new Color(0.3f, 0.3f, 0.3f, 0.7f); // Dark gray, slightly transparent
+                
+                // Try to enable transparency
+                if (shadowMat.HasProperty("_Mode"))
+                {
+                    shadowMat.SetFloat("_Mode", 3); // Transparent mode
+                    shadowMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    shadowMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    shadowMat.SetInt("_ZWrite", 0);
+                    shadowMat.DisableKeyword("_ALPHATEST_ON");
+                    shadowMat.EnableKeyword("_ALPHABLEND_ON");
+                    shadowMat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                    shadowMat.renderQueue = 3000;
+                }
+                
+                renderer.material = shadowMat;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Disable any grabbing/interaction components to prevent player pickup
+    /// </summary>
+    private void DisablePlayerGrabbing(GameObject projectile)
+    {
+        // Remove XR grab interactables (if using Unity XR)
+        #if UNITY_XR
+        var xrGrabInteractable = projectile.GetComponent<UnityEngine.XR.Interaction.Toolkit.XRGrabInteractable>();
+        if (xrGrabInteractable != null)
+        {
+            Destroy(xrGrabInteractable);
+        }
+        #endif
+        
+        // Remove Oculus/Meta Grabbable (if using Meta XR SDK)
+        #if UNITY_EDITOR || UNITY_ANDROID
+        var oculusGrabbable = projectile.GetComponent<Oculus.Interaction.Grabbable>();
+        if (oculusGrabbable != null)
+        {
+            Destroy(oculusGrabbable);
+        }
+        
+        var oculusGrabInteractable = projectile.GetComponent<Oculus.Interaction.GrabInteractable>();
+        if (oculusGrabInteractable != null)
+        {
+            Destroy(oculusGrabInteractable);
+        }
+        #endif
+        
+        // Generic: look for any component with "Grab" or "Interactable" in the name
+        MonoBehaviour[] allComponents = projectile.GetComponents<MonoBehaviour>();
+        foreach (MonoBehaviour component in allComponents)
+        {
+            if (component == null) continue;
+            
+            string typeName = component.GetType().Name.ToLower();
+            if (typeName.Contains("grab") || typeName.Contains("interactable"))
+            {
+                // Don't destroy BuildingBlockProjectile or EnemyProjectileDamage
+                if (!(component is BuildingBlockProjectile) && !(component is EnemyProjectileDamage))
+                {
+                    Destroy(component);
+                }
+            }
+        }
+        
+        Debug.Log($"DisablePlayerGrabbing: Removed grab components from {projectile.name}");
+    }
+    
+    /// <summary>
+    /// Throw an existing object from the scene (DEPRECATED - now always spawns new)
+    /// </summary>
+    private void ThrowExistingObject(GameObject obj, MovementFrame frame)
+    {
+        // No longer used - always spawn new shadow projectiles
+        Debug.LogWarning("EnemyIKReplay: ThrowExistingObject called but is deprecated");
+    }
+    
+    /// <summary>
+    /// Configure projectile to hurt the player
+    /// </summary>
+    private void MakeProjectileHurtPlayer(GameObject projectile)
+    {
+        // Add or get CombatSystem component to detect hits on player
+        EnemyProjectileDamage damageScript = projectile.GetComponent<EnemyProjectileDamage>();
+        if (damageScript == null)
+        {
+            damageScript = projectile.AddComponent<EnemyProjectileDamage>();
+        }
+        
+        // Ensure physics layers allow collision with player
+        // Layer 0 = Default (most objects), should collide with player
+        projectile.layer = 0;
     }
 }
 
