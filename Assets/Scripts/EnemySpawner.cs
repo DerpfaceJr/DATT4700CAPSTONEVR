@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
@@ -131,8 +132,10 @@ public class EnemySpawner : MonoBehaviour
         // Ensure required components exist
         EnsureEnemyComponents(enemy, index, movementData, isFirstRound);
         
-        // Position enemy
-        Vector3 spawnPosition = GetSpawnPosition(index);
+        // Position enemy - check if rigged for proper spawn height
+        bool isRigged = enemy.GetComponent<IKTargetFollowVRRig>() != null || 
+                       enemy.GetComponentInChildren<IKTargetFollowVRRig>() != null;
+        Vector3 spawnPosition = GetSpawnPosition(index, isRigged);
         enemy.transform.position = spawnPosition;
         
         return enemy;
@@ -163,11 +166,8 @@ public class EnemySpawner : MonoBehaviour
             }
         }
         
-        // Add Rigidbody with gravity enabled
-        Rigidbody rb = enemy.AddComponent<Rigidbody>();
-        rb.mass = 1f;
-        rb.useGravity = true; // Ensure gravity is enabled
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        // Note: Rigidbody will be added and configured in EnsureEnemyComponents()
+        // This avoids redundant setup and ensures consistent configuration
         
         return enemy;
     }
@@ -177,7 +177,6 @@ public class EnemySpawner : MonoBehaviour
     /// </summary>
     private void EnsureEnemyComponents(GameObject enemy, int index, List<MovementFrame> movementData, bool isFirstRound)
     {
-        //test
         IKTargetFollowVRRig enemyIKRig = enemy.GetComponent<IKTargetFollowVRRig>();
         if (enemyIKRig == null)
         {
@@ -193,9 +192,6 @@ public class EnemySpawner : MonoBehaviour
         }
 
         // Shared settings (safe for both)
-        rb.mass = 70f;
-        rb.linearDamping = 2f;
-        rb.angularDamping = 5f;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
 
@@ -206,41 +202,18 @@ public class EnemySpawner : MonoBehaviour
             rb.useGravity = false;
             rb.isKinematic = true;
             rb.constraints = RigidbodyConstraints.None;
+            // Note: mass/damping are ignored for kinematic bodies, so we skip them
         }
         else
         {
             // Simple / physics enemy
+            rb.mass = 70f; // Only set for non-kinematic bodies
+            rb.linearDamping = 2f; // Only set for non-kinematic bodies
+            rb.angularDamping = 5f; // Only set for non-kinematic bodies
             rb.useGravity = true;
             rb.isKinematic = false;
             rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         }
-
-
-        // Ensure Rigidbody exists with gravity enabled
-        //Rigidbody rb = enemy.GetComponent<Rigidbody>();
-        //if (rb == null)
-        //{
-        //    rb = enemy.AddComponent<Rigidbody>();
-        //    rb.mass = 70f; // Typical human weight
-        //    rb.linearDamping = 2f; // Add drag to prevent sliding
-        //    rb.angularDamping = 5f; // Prevent rotation drift
-        //    rb.useGravity = true; // Ensure gravity is enabled
-        //    rb.isKinematic = false; // Must be non-kinematic for gravity to work
-        //    rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-        //    rb.collisionDetectionMode = CollisionDetectionMode.Continuous; // Better collision detection
-        //    rb.interpolation = RigidbodyInterpolation.Interpolate; // Smooth movement
-        //}
-        //else
-        //{
-        //    // Ensure gravity is enabled and not kinematic on existing Rigidbody
-        //    rb.linearDamping = 2f;
-        //    rb.angularDamping = 5f;
-        //    rb.useGravity = true;
-        //    rb.isKinematic = false; // Must be non-kinematic for gravity to work
-        //    rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-        //    rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-        //    rb.interpolation = RigidbodyInterpolation.Interpolate;
-        //}
 
         // Ensure enemy has a collider for physics and combat
         Collider collider = enemy.GetComponent<Collider>();
@@ -311,15 +284,6 @@ public class EnemySpawner : MonoBehaviour
             combatSystem.instakillMinVelocity = 1.5f; // Prevent death from touching static objects
         }
         
-        // Check if enemy has rigged character model (has IKTargetFollowVRRig component)
-        //IKTargetFollowVRRig enemyIKRig = enemy.GetComponent<IKTargetFollowVRRig>();
-        //if (enemyIKRig == null)
-        //{
-        //    enemyIKRig = enemy.GetComponentInChildren<IKTargetFollowVRRig>();
-        //}
-        
-        //bool hasRiggedCharacter = enemyIKRig != null;
-        
         // Add appropriate AI component (remove existing ones first)
         StaticEnemy existingStatic = enemy.GetComponent<StaticEnemy>();
         EnemyAI existingAI = enemy.GetComponent<EnemyAI>();
@@ -376,6 +340,9 @@ public class EnemySpawner : MonoBehaviour
                 enemyIKReplay.ikRig = enemyIKRig;
                 enemyIKReplay.useInterpolation = true;
                 
+                // Temporarily disable to prevent micro jitter on first frame
+                enemyIKReplay.enabled = false;
+                
                 // Assign Enemy Ball prefab for projectile replay
                 if (enemyBallPrefab != null)
                 {
@@ -427,6 +394,9 @@ public class EnemySpawner : MonoBehaviour
                         // Add time offset for multiple enemies replaying same path
                         enemyIKReplay.timeOffset = index * 0.5f; // Stagger enemies slightly
                         
+                        // Enable IKReplay on next frame to prevent micro jitter
+                        StartCoroutine(EnableIKReplayNextFrame(enemyIKReplay));
+                        
                         Debug.Log($"Enemy {index + 1} (Rigged): Assigned {movementData.Count} movement frames. Has IK Data: {hasIKData} (first frame time: {movementData[0].timestamp}, last: {movementData[movementData.Count - 1].timestamp})");
                     }
                     else
@@ -476,7 +446,7 @@ public class EnemySpawner : MonoBehaviour
     /// <summary>
     /// Get spawn position for an enemy
     /// </summary>
-    private Vector3 GetSpawnPosition(int index)
+    private Vector3 GetSpawnPosition(int index, bool isRigged = false)
     {
         if (spawnPoints != null && spawnPoints.Length > 0 && !useRandomSpawns)
         {
@@ -574,15 +544,43 @@ public class EnemySpawner : MonoBehaviour
         if (Physics.Raycast(rayStart, Vector3.down, out hit, 20f))
         {
             // Found ground - spawn enemy on the surface
-            y = hit.point.y + enemyHeightOffset;
+            // For rigged characters, use a small fixed offset to prevent visual pop
+            // (rigged characters have their pivot at hips, not feet)
+            if (isRigged)
+            {
+                y = hit.point.y + 0.05f; // Small offset for rigged characters
+            }
+            else
+            {
+                y = hit.point.y + enemyHeightOffset;
+            }
         }
         else
         {
             // Raycast failed - use groundLevel as fallback
-            y = groundLevel + enemyHeightOffset;
+            if (isRigged)
+            {
+                y = groundLevel + 0.05f;
+            }
+            else
+            {
+                y = groundLevel + enemyHeightOffset;
+            }
         }
         
         return new Vector3(x, y, z);
+    }
+    
+    /// <summary>
+    /// Enable IKReplay on next frame to prevent micro jitter on first frame
+    /// </summary>
+    private IEnumerator EnableIKReplayNextFrame(EnemyIKReplay ikReplay)
+    {
+        yield return null; // Wait one frame
+        if (ikReplay != null)
+        {
+            ikReplay.enabled = true;
+        }
     }
     
     /// <summary>
@@ -631,4 +629,3 @@ public class EnemySpawner : MonoBehaviour
         return mat;
     }
 }
-
