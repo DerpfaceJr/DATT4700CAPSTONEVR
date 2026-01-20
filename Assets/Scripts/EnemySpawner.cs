@@ -177,32 +177,71 @@ public class EnemySpawner : MonoBehaviour
     /// </summary>
     private void EnsureEnemyComponents(GameObject enemy, int index, List<MovementFrame> movementData, bool isFirstRound)
     {
-        // Ensure Rigidbody exists with gravity enabled
+        //test
+        IKTargetFollowVRRig enemyIKRig = enemy.GetComponent<IKTargetFollowVRRig>();
+        if (enemyIKRig == null)
+        {
+            enemyIKRig = enemy.GetComponentInChildren<IKTargetFollowVRRig>();
+        }
+
+        bool hasRiggedCharacter = enemyIKRig != null;
+
         Rigidbody rb = enemy.GetComponent<Rigidbody>();
         if (rb == null)
         {
             rb = enemy.AddComponent<Rigidbody>();
-            rb.mass = 70f; // Typical human weight
-            rb.linearDamping = 2f; // Add drag to prevent sliding
-            rb.angularDamping = 5f; // Prevent rotation drift
-            rb.useGravity = true; // Ensure gravity is enabled
-            rb.isKinematic = false; // Must be non-kinematic for gravity to work
-            rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous; // Better collision detection
-            rb.interpolation = RigidbodyInterpolation.Interpolate; // Smooth movement
+        }
+
+        // Shared settings (safe for both)
+        rb.mass = 70f;
+        rb.linearDamping = 2f;
+        rb.angularDamping = 5f;
+        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+
+        // IMPORTANT: Branch by rig type
+        if (hasRiggedCharacter)
+        {
+            // Rigged humanoid → animation driven
+            rb.useGravity = false;
+            rb.isKinematic = true;
+            rb.constraints = RigidbodyConstraints.None;
         }
         else
         {
-            // Ensure gravity is enabled and not kinematic on existing Rigidbody
-            rb.linearDamping = 2f;
-            rb.angularDamping = 5f;
+            // Simple / physics enemy
             rb.useGravity = true;
-            rb.isKinematic = false; // Must be non-kinematic for gravity to work
+            rb.isKinematic = false;
             rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-            rb.interpolation = RigidbodyInterpolation.Interpolate;
         }
-        
+
+
+        // Ensure Rigidbody exists with gravity enabled
+        //Rigidbody rb = enemy.GetComponent<Rigidbody>();
+        //if (rb == null)
+        //{
+        //    rb = enemy.AddComponent<Rigidbody>();
+        //    rb.mass = 70f; // Typical human weight
+        //    rb.linearDamping = 2f; // Add drag to prevent sliding
+        //    rb.angularDamping = 5f; // Prevent rotation drift
+        //    rb.useGravity = true; // Ensure gravity is enabled
+        //    rb.isKinematic = false; // Must be non-kinematic for gravity to work
+        //    rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        //    rb.collisionDetectionMode = CollisionDetectionMode.Continuous; // Better collision detection
+        //    rb.interpolation = RigidbodyInterpolation.Interpolate; // Smooth movement
+        //}
+        //else
+        //{
+        //    // Ensure gravity is enabled and not kinematic on existing Rigidbody
+        //    rb.linearDamping = 2f;
+        //    rb.angularDamping = 5f;
+        //    rb.useGravity = true;
+        //    rb.isKinematic = false; // Must be non-kinematic for gravity to work
+        //    rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        //    rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        //    rb.interpolation = RigidbodyInterpolation.Interpolate;
+        //}
+
         // Ensure enemy has a collider for physics and combat
         Collider collider = enemy.GetComponent<Collider>();
         if (collider == null)
@@ -213,7 +252,10 @@ public class EnemySpawner : MonoBehaviour
             // Set collider for standing character with hips at Y=1.0
             // Collider center at Y=-1.0 as requested by user
             // This positions the collider lower to match the visual body better
-            capsule.center = new Vector3(0f, -1.0f, 0f); // Center below root (user requested Y=-1)
+
+            //Test Change org is -1
+            capsule.center = new Vector3(0f, 1.0f, 0f); // Center below root (user requested Y=-1)
+
             capsule.radius = 0.35f; // Slightly narrower for more precise hits
             capsule.height = 2.0f; // Full standing height
             capsule.direction = 1; // Y-axis (vertical)
@@ -270,13 +312,13 @@ public class EnemySpawner : MonoBehaviour
         }
         
         // Check if enemy has rigged character model (has IKTargetFollowVRRig component)
-        IKTargetFollowVRRig enemyIKRig = enemy.GetComponent<IKTargetFollowVRRig>();
-        if (enemyIKRig == null)
-        {
-            enemyIKRig = enemy.GetComponentInChildren<IKTargetFollowVRRig>();
-        }
+        //IKTargetFollowVRRig enemyIKRig = enemy.GetComponent<IKTargetFollowVRRig>();
+        //if (enemyIKRig == null)
+        //{
+        //    enemyIKRig = enemy.GetComponentInChildren<IKTargetFollowVRRig>();
+        //}
         
-        bool hasRiggedCharacter = enemyIKRig != null;
+        //bool hasRiggedCharacter = enemyIKRig != null;
         
         // Add appropriate AI component (remove existing ones first)
         StaticEnemy existingStatic = enemy.GetComponent<StaticEnemy>();
