@@ -1,59 +1,9 @@
 fileFormatVersion: 2
-guid: 6a23bfa9319c24b8a89b0adbc2aef2aa
+guid: 517575a84432f4a20b5d5334ca013387
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects:
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: brown_planks_09_diff_4k
-    second: {fileID: 2800000, guid: 7b59531e3d9884e708ab818807c14fe7, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: concrete_floor_damaged_01_diff_4k
-    second: {fileID: 2800000, guid: 1c47bc2e7d0cb4dd3933ecdd1f964b47, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: cracked_concrete_diff_4k
-    second: {fileID: 2800000, guid: 492c9dc6ba7694659bef734c28214be2, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: damaged_plaster_diff_4k
-    second: {fileID: 2800000, guid: 264b255405c11408ba9fb0f2a8590065, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: rdk$0200-0200-055AAAFD
-    second: {fileID: 2800000, guid: 09adca6d5fe4e4b58b3761a54c4ed510, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: rdk$0200-0200-0A903FF8
-    second: {fileID: 2800000, guid: 63fcacd7d1129459d9955990f42fdd4b, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: rdk$0200-0200-71F5F311
-    second: {fileID: 2800000, guid: 5c13077299ea54a3e802b0e2c3fb6216, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: rdk$0200-0200-B7C4AF15
-    second: {fileID: 2800000, guid: b861e6bb534e04e2e8c5ea60dc3802fa, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: rdk$0200-0200-DACA41AB
-    second: {fileID: 2800000, guid: 504db72610be94600a86dc096252130c, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: wood_floor_diff_4k
-    second: {fileID: 2800000, guid: 65b71de20cd7e4fcdaca11575b629e9e, type: 3}
+  externalObjects: {}
   materials:
     materialImportMode: 2
     materialName: 0
