@@ -21,11 +21,17 @@ public class ObjectPositionResetter : MonoBehaviour
     [Tooltip("Reset objects when round starts")]
     public bool resetOnRoundStart = true;
     
+    [Tooltip("Reset objects when round ends (in addition to round start)")]
+    public bool resetOnRoundEnd = true;
+    
     [Tooltip("Reset physics velocities")]
     public bool resetVelocities = true;
     
     [Tooltip("Reset rotations to original")]
     public bool resetRotations = true;
+    
+    [Tooltip("Re-find objects each reset (in case new ones were added)")]
+    public bool refindObjectsOnReset = true;
     
     // Tracked objects and their initial states
     private Dictionary<GameObject, ObjectState> trackedObjects = new Dictionary<GameObject, ObjectState>();
@@ -61,7 +67,11 @@ public class ObjectPositionResetter : MonoBehaviour
         RoundManager roundManager = FindObjectOfType<RoundManager>();
         if (roundManager != null)
         {
-            // We'll call ResetObjects from RoundManager.StartRound()
+            // Subscribe to round end event if enabled
+            if (resetOnRoundEnd)
+            {
+                roundManager.OnRoundComplete += OnRoundComplete;
+            }
             Debug.Log($"ObjectPositionResetter: Found RoundManager, ready to reset {trackedObjects.Count} objects");
         }
         else
@@ -103,6 +113,27 @@ public class ObjectPositionResetter : MonoBehaviour
             TrackObject(proj.gameObject);
         }
         
+        // Find balls with ConfigureBallLikeCube component
+        ConfigureBallLikeCube[] balls = FindObjectsOfType<ConfigureBallLikeCube>();
+        foreach (var ball in balls)
+        {
+            TrackObject(ball.gameObject);
+        }
+        
+        // Find objects with "Ball" in name (catch any balls we might have missed)
+        GameObject[] allObjects = FindObjectsOfType<GameObject>();
+        foreach (GameObject obj in allObjects)
+        {
+            if (obj.name.ToLower().Contains("ball") && obj.GetComponent<Rigidbody>() != null)
+            {
+                // Only track if it has a Rigidbody (is throwable)
+                if (!trackedObjects.ContainsKey(obj))
+                {
+                    TrackObject(obj);
+                }
+            }
+        }
+        
         SwordPhysicsFix[] swords = FindObjectsOfType<SwordPhysicsFix>();
         foreach (var sword in swords)
         {
@@ -137,16 +168,43 @@ public class ObjectPositionResetter : MonoBehaviour
         Debug.Log($"ObjectPositionResetter: Tracking {obj.name} at position {state.position}");
     }
     
+    private void OnDestroy()
+    {
+        // Unsubscribe from events
+        RoundManager roundManager = FindObjectOfType<RoundManager>();
+        if (roundManager != null)
+        {
+            roundManager.OnRoundComplete -= OnRoundComplete;
+        }
+    }
+    
+    /// <summary>
+    /// Handle round complete event
+    /// </summary>
+    private void OnRoundComplete(int roundNumber)
+    {
+        if (resetOnRoundEnd)
+        {
+            ResetObjects();
+        }
+    }
+    
     /// <summary>
     /// Reset all tracked objects to their initial positions
-    /// Call this at the start of each round
+    /// Call this at the start of each round or when round ends
     /// </summary>
     public void ResetObjects()
     {
-        if (!resetOnRoundStart)
+        if (!resetOnRoundStart && !resetOnRoundEnd)
         {
             Debug.Log("ObjectPositionResetter: Reset disabled");
             return;
+        }
+        
+        // Re-find objects if enabled (in case new ones were added or scene changed)
+        if (refindObjectsOnReset)
+        {
+            FindAndTrackObjects();
         }
         
         int resetCount = 0;

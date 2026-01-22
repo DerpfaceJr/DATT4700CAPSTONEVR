@@ -349,6 +349,16 @@ public class RoundManager : MonoBehaviour
             }
         }
         
+        // Reset throwable objects and weapons to starting positions when round ends
+        if (objectResetter != null)
+        {
+            objectResetter.ResetObjects();
+            if (debugMode)
+            {
+                Debug.Log($"Round {currentRound} Complete: Reset all throwable objects and weapons to original positions");
+            }
+        }
+        
         // Trigger round complete event
         OnRoundComplete?.Invoke(currentRound);
         
