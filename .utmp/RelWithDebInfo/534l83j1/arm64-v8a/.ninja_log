@@ -1,10 +1,19 @@
 # ninja log v5
-1	862	1768319486498363988	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	683e98dfc805fd44
-1	871	1768319486509023871	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	72abc9560edae57d
-0	887	1768319486526090027	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	cbaec0134006af79
-1	890	1768319486530781346	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	38acadd422d934be
-0	934	1768319486574880668	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	561aca4b8e80ace5
-1	969	1768319486610235559	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	ae21c938a88cf80
-1	1057	1768319486698746829	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	f9c7c26a4385e262
 0	1123	1768319486764683709	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	4a86f0a332619e5a
+1	1057	1768319486698746829	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	f9c7c26a4385e262
+1	969	1768319486610235559	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	ae21c938a88cf80
+0	934	1768319486574880668	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	561aca4b8e80ace5
 1124	1226	1768319486869416428	/Users/kobeleung/Documents/GitHub/DATT4700CAPSTONEVR/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/534l83j1/obj/arm64-v8a/libgame.so	62f908bcf8ae28dd
+1	890	1768319486530781346	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	38acadd422d934be
+0	887	1768319486526090027	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	cbaec0134006af79
+1	871	1768319486509023871	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	72abc9560edae57d
+1	862	1768319486498363988	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	683e98dfc805fd44
+3	1258	1769381867630216199	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	683e98dfc805fd44
+3	1260	1769381867636352764	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	cbaec0134006af79
+3	1261	1769381867633920854	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	72abc9560edae57d
+3	1268	1769381867644874821	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	38acadd422d934be
+3	1300	1769381867677367056	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	561aca4b8e80ace5
+3	1331	1769381867709222418	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	ae21c938a88cf80
+3	1439	1769381867817111965	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	f9c7c26a4385e262
+2	1509	1769381867886347838	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	4a86f0a332619e5a
+1509	1716	1769381868094965705	/Users/kobeleung/Documents/GitHub/DATT4700CAPSTONEVR/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/534l83j1/obj/arm64-v8a/libgame.so	62f908bcf8ae28dd
