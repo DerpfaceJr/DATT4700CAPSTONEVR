@@ -97,32 +97,34 @@ public class CombatSystem : MonoBehaviour
         // Special handling for melee weapons
         if (isMeleeWeapon && meleeWeaponsEnabled)
         {
-            // For kinematic swords (held), use collision relative velocity
-            // For non-kinematic swords (thrown), use rigidbody velocity
-            if (rb.isKinematic)
-            {
-                // Sword is held (kinematic) - use collision velocity
-                velocityMagnitude = velocity.magnitude;
-                Debug.Log($"[CombatSystem] Sword (kinematic) collision velocity: {velocityMagnitude:F2} m/s");
-            }
-            else
-            {
-                // Sword is released (non-kinematic) - use rigidbody velocity
-                velocityMagnitude = rb.linearVelocity.magnitude;
-                Debug.Log($"[CombatSystem] Sword (non-kinematic) rigidbody velocity: {velocityMagnitude:F2} m/s");
-            }
-            
-            if (velocityMagnitude >= swordMinVelocity)
-            {
-                // Sword hit with sufficient velocity - instakill
-                InstakillEnemy(collidingObject, velocityMagnitude, "SWORD KILL");
-                return;
-            }
-            else
-            {
-                Debug.Log($"[CombatSystem] Sword hit but velocity too low ({velocityMagnitude:F2} < {swordMinVelocity})");
-                return;
-            }
+            //// For kinematic swords (held), use collision relative velocity
+            //// For non-kinematic swords (thrown), use rigidbody velocity
+            //if (rb.isKinematic)
+            //{
+            //    // Sword is held (kinematic) - use collision velocity
+            //    velocityMagnitude = velocity.magnitude;
+            //    Debug.Log($"[CombatSystem] Sword (kinematic) collision velocity: {velocityMagnitude:F2} m/s");
+            //}
+            //else
+            //{
+            //    // Sword is released (non-kinematic) - use rigidbody velocity
+            //    velocityMagnitude = rb.linearVelocity.magnitude;
+            //    Debug.Log($"[CombatSystem] Sword (non-kinematic) rigidbody velocity: {velocityMagnitude:F2} m/s");
+            //}
+
+            //if (velocityMagnitude >= swordMinVelocity)
+            //{
+            //    // Sword hit with sufficient velocity - instakill
+            //    InstakillEnemy(collidingObject, velocityMagnitude, "SWORD KILL");
+            //    return;
+            //}
+            //else
+            //{
+            //    Debug.Log($"[CombatSystem] Sword hit but velocity too low ({velocityMagnitude:F2} < {swordMinVelocity})");
+            //    return;
+            //}
+
+            InstakillEnemy(collidingObject, velocityMagnitude, "SWORD KILL");
         }
         
         // If it's a building block projectile, use its velocity check
