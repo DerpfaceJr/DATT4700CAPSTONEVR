@@ -21,10 +21,13 @@ public class TextControl : MonoBehaviour
         {
             ShowText("Hit", Color.green);
         }
-        else if (collision.gameObject.CompareTag("Ground"))
-        {
-            ShowText("Miss", Color.red);
-        }
+
+        //Command out for now
+
+        //else if (collision.gameObject.CompareTag("Ground"))
+        //{
+        //    ShowText("Miss", Color.red);
+        //}
     }
 
     void ShowText(string message, Color color)
