@@ -220,20 +220,29 @@ public class EnemySpawner : MonoBehaviour
         if (collider == null)
         {
             // Add CapsuleCollider for rigged characters (encompasses body)
-            CapsuleCollider capsule = enemy.AddComponent<CapsuleCollider>();
-            
+            //BoxCollider capsule = enemy.AddComponent<BoxCollider>();
+
             // Set collider for standing character with hips at Y=1.0
             // Collider center at Y=-1.0 as requested by user
             // This positions the collider lower to match the visual body better
 
             //Test Change org is -1
-            capsule.center = new Vector3(0f, 1.0f, 0f); // Center below root (user requested Y=-1)
+            //capsule.center = new Vector3(-0.5f, 0.7f, 0.007173032f); // Center below root (user requested Y=-1)
+            // Add BoxCollider for rigged characters
+            BoxCollider box = enemy.AddComponent<BoxCollider>();
 
-            capsule.radius = 0.35f; // Slightly narrower for more precise hits
-            capsule.height = 2.0f; // Full standing height
-            capsule.direction = 1; // Y-axis (vertical)
-            
-            Debug.Log($"Added CapsuleCollider to enemy {enemy.name}: center={capsule.center}, radius={capsule.radius}, height={capsule.height}");
+            // Set box size (X, Y, Z)
+            box.size = new Vector3(1f, 1.946584f, 0.4289667f);
+
+            // Set box center (relative to enemy root)
+            box.center = new Vector3(-0.5f, 0.7f, 0.007173032f);
+
+
+            //capsule.radius = 0.35f; // Slightly narrower for more precise hits
+            //capsule.height = 2.0f; // Full standing height
+            //capsule.direction = 1; // Y-axis (vertical)
+
+            //Debug.Log($"Added CapsuleCollider to enemy {enemy.name}: center={capsule.center}, radius={capsule.radius}, height={capsule.height}");
         }
         
         // Ensure enemy is red (if using prefab, check material)
@@ -312,6 +321,18 @@ public class EnemySpawner : MonoBehaviour
             foreach (IKFootSolver footSolver in footSolvers)
             {
                 footSolver.enabled = false;
+            }
+
+            Animator anim = enemy.GetComponent<Animator>();
+            if (anim != null)
+            {
+                anim.enabled = false;
+            }
+
+            // Disable IK rig completely for static enemy
+            if (enemyIKRig != null)
+            {
+                enemyIKRig.enabled = false;
             }
         }
         else
