@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using System.IO;
 
 public class TextControl : MonoBehaviour
 {
@@ -12,6 +13,19 @@ public class TextControl : MonoBehaviour
 
     private void Start()
     {
+        // #region agent log
+        try
+        {
+            string logPath = @"c:\Users\joshu\Documents\DATT4700CAPSTONEVR\.cursor\debug.log";
+            bool rtNull = (resultText == null);
+            string name = gameObject != null ? gameObject.name.Replace("\"", "'") : "null";
+            string line = "{\"location\":\"TextControl.cs:Start\",\"message\":\"Start\",\"data\":{\"resultTextIsNull\":" + (rtNull ? "true" : "false") + ",\"gameObjectName\":\"" + name + "\"},\"timestamp\":" + System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ",\"sessionId\":\"debug-session\",\"hypothesisId\":\"A\"}\n";
+            File.AppendAllText(logPath, line);
+        }
+        catch (System.Exception) { }
+        // #endregion
+        if (resultText == null)
+            return;
         resultText.gameObject.SetActive(false);
     }
 
@@ -32,6 +46,8 @@ public class TextControl : MonoBehaviour
 
     void ShowText(string message, Color color)
     {
+        if (resultText == null)
+            return;
         resultText.text = message;
         resultText.color = color;
         resultText.gameObject.SetActive(true);
@@ -45,7 +61,8 @@ public class TextControl : MonoBehaviour
     IEnumerator HideTextAfterTime()
     {
         yield return new WaitForSeconds(displayTime);
-        resultText.gameObject.SetActive(false);
+        if (resultText != null)
+            resultText.gameObject.SetActive(false);
     }
 }
 

@@ -12,11 +12,11 @@ public class EnemySpawner : MonoBehaviour
     [Tooltip("Basic enemy prefab for static enemies (Round 1) - simple cube/mesh")]
     public GameObject enemyPrefab;
     
-    [Tooltip("Rigged character prefab for replay enemies (Round 2+) - must have IKTargetFollowVRRig")]
+    [Tooltip("Rigged character prefab for round 2+ enemies - must have IKTargetFollowVRRig")]
     public GameObject riggedEnemyPrefab;
     
     [Header("Projectile Settings")]
-    [Tooltip("Enemy Ball prefab for enemy projectile replay")]
+    [Tooltip("Enemy Ball prefab for enemy ranged attacks")]
     public GameObject enemyBallPrefab;
     
     [Tooltip("Enemy material (red for visibility) - only used if prefab not assigned")]
@@ -56,11 +56,11 @@ public class EnemySpawner : MonoBehaviour
     }
     
     /// <summary>
-    /// Spawn a single enemy for a round
+    /// Spawn a single enemy at the given world position (used by RoundManager).
     /// </summary>
-    public GameObject SpawnSingleEnemy(int enemyIndex, List<MovementFrame> movementData, bool isFirstRound)
+    public GameObject SpawnSingleEnemyAt(int enemyIndex, Vector3 worldPosition, bool isFirstRound)
     {
-        GameObject enemy = CreateEnemy(enemyIndex, movementData, isFirstRound);
+        GameObject enemy = CreateEnemyAt(enemyIndex, worldPosition, isFirstRound);
         if (enemy != null)
         {
             activeEnemies.Add(enemy);
@@ -69,72 +69,35 @@ public class EnemySpawner : MonoBehaviour
     }
     
     /// <summary>
-    /// Spawn enemies for a round (legacy method - kept for compatibility)
+    /// Get default spawn position for an index (used for round 1 spawn).
     /// </summary>
-    public List<GameObject> SpawnEnemies(int enemyCount, List<MovementFrame> movementData, bool isFirstRound)
+    public Vector3 GetSpawnPositionForIndex(int index, bool isRigged)
     {
-        // Clear previous enemies
-        ClearEnemies();
-        
-        activeEnemies.Clear();
-        
-        for (int i = 0; i < enemyCount; i++)
-        {
-            GameObject enemy = CreateEnemy(i, movementData, isFirstRound);
-            if (enemy != null)
-            {
-                activeEnemies.Add(enemy);
-            }
-        }
-        
-        return activeEnemies;
+        return GetSpawnPosition(index, isRigged);
     }
     
     /// <summary>
-    /// Create a single enemy GameObject
+    /// Create a single enemy GameObject at the given position
     /// </summary>
-    private GameObject CreateEnemy(int index, List<MovementFrame> movementData, bool isFirstRound)
+    private GameObject CreateEnemyAt(int index, Vector3 worldPosition, bool isFirstRound)
     {
         GameObject enemy;
+        bool useBasicPrefab = isFirstRound && index == 0;
+        GameObject prefabToUse = useBasicPrefab ? enemyPrefab : (riggedEnemyPrefab != null ? riggedEnemyPrefab : enemyPrefab);
         
-        // Determine which prefab to use based on enemy type
-        bool shouldBeStatic = isFirstRound && index == 0;
-        GameObject prefabToUse = null;
-        
-        if (shouldBeStatic)
-        {
-            // Static enemy (Round 1 first enemy) - use basic enemy prefab
-            prefabToUse = enemyPrefab;
-        }
-        else
-        {
-            // Replay enemy (Round 2+) - use rigged character prefab
-            prefabToUse = riggedEnemyPrefab != null ? riggedEnemyPrefab : enemyPrefab;
-        }
-        
-        // Use prefab if assigned, otherwise create procedurally
         if (prefabToUse != null)
         {
-            // Instantiate from prefab
             enemy = Instantiate(prefabToUse);
             enemy.name = $"Enemy_Round{index + 1}";
         }
         else
         {
-            // Fallback: Create procedurally (for backwards compatibility)
             enemy = CreateEnemyProcedurally();
             enemy.name = $"Enemy_Round{index + 1}";
         }
         
-        // Ensure required components exist
-        EnsureEnemyComponents(enemy, index, movementData, isFirstRound);
-        
-        // Position enemy - check if rigged for proper spawn height
-        bool isRigged = enemy.GetComponent<IKTargetFollowVRRig>() != null || 
-                       enemy.GetComponentInChildren<IKTargetFollowVRRig>() != null;
-        Vector3 spawnPosition = GetSpawnPosition(index, isRigged);
-        enemy.transform.position = spawnPosition;
-        
+        EnsureEnemyComponents(enemy, index, isFirstRound);
+        enemy.transform.position = worldPosition;
         return enemy;
     }
     
@@ -172,7 +135,7 @@ public class EnemySpawner : MonoBehaviour
     /// <summary>
     /// Ensure enemy has all required components
     /// </summary>
-    private void EnsureEnemyComponents(GameObject enemy, int index, List<MovementFrame> movementData, bool isFirstRound)
+    private void EnsureEnemyComponents(GameObject enemy, int index, bool isFirstRound)
     {
         IKTargetFollowVRRig enemyIKRig = enemy.GetComponent<IKTargetFollowVRRig>();
         if (enemyIKRig == null)
@@ -294,174 +257,29 @@ public class EnemySpawner : MonoBehaviour
             combatSystem.instakillMinVelocity = 1.5f; // Prevent death from touching static objects
         }
         
-        // Add appropriate AI component (remove existing ones first)
-        StaticEnemy existingStatic = enemy.GetComponent<StaticEnemy>();
-        EnemyAI existingAI = enemy.GetComponent<EnemyAI>();
-        EnemyIKReplay existingIKReplay = enemy.GetComponent<EnemyIKReplay>();
-        
-        if (isFirstRound && index == 0)
+        // Add seek-and-attack behaviour for all enemies
+        EnemySeekAndAttack seekAttack = enemy.GetComponent<EnemySeekAndAttack>();
+        if (seekAttack == null)
         {
-            // First enemy is static
-            if (existingAI != null)
-            {
-                Destroy(existingAI);
-            }
-            if (existingIKReplay != null)
-            {
-                Destroy(existingIKReplay);
-            }
-            if (existingStatic == null)
-            {
-                StaticEnemy staticEnemy = enemy.AddComponent<StaticEnemy>();
-                staticEnemy.rotationSpeed = 30f;
-                staticEnemy.pattern = StaticEnemy.RotationPattern.Continuous;
-            }
-            
-            // Disable IKFootSolver components on static enemy (not needed for stationary enemy)
-            IKFootSolver[] footSolvers = enemy.GetComponentsInChildren<IKFootSolver>();
-            foreach (IKFootSolver footSolver in footSolvers)
-            {
-                footSolver.enabled = false;
-            }
-
-            Animator anim = enemy.GetComponent<Animator>();
-            if (anim != null)
-            {
-                anim.enabled = false;
-            }
-
-            // Disable IK rig completely for static enemy
-            if (enemyIKRig != null)
-            {
-                enemyIKRig.enabled = false;
-            }
+            seekAttack = enemy.AddComponent<EnemySeekAndAttack>();
         }
-        else
+        seekAttack.moveSpeed = 3f;
+        seekAttack.attackRange = 8f;
+        seekAttack.attackCooldown = 2f;
+        seekAttack.projectilePrefab = enemyBallPrefab;
+        
+        // Rigged: keep LegBonePositionFixer for proper leg positioning
+        if (hasRiggedCharacter)
         {
-            // Other enemies replay movements
-            if (existingStatic != null)
+            LegBonePositionFixer legFixer = enemy.GetComponent<LegBonePositionFixer>();
+            if (legFixer == null)
             {
-                Destroy(existingStatic);
+                legFixer = enemy.AddComponent<LegBonePositionFixer>();
             }
-            
-            if (hasRiggedCharacter)
-            {
-                // Use EnemyIKReplay for rigged characters
-                if (existingAI != null)
-                {
-                    Destroy(existingAI);
-                }
-                
-                EnemyIKReplay enemyIKReplay = existingIKReplay;
-                if (enemyIKReplay == null)
-                {
-                    enemyIKReplay = enemy.AddComponent<EnemyIKReplay>();
-                }
-                
-                // Set IK rig reference
-                enemyIKReplay.ikRig = enemyIKRig;
-                enemyIKReplay.useInterpolation = true;
-                
-                // Temporarily disable to prevent micro jitter on first frame
-                enemyIKReplay.enabled = false;
-                
-                // Assign Enemy Ball prefab for projectile replay
-                if (enemyBallPrefab != null)
-                {
-                    enemyIKReplay.enemyBallPrefab = enemyBallPrefab;
-                    Debug.Log($"Enemy {index + 1} (Rigged): Assigned Enemy Ball prefab for projectile replay");
-                }
-                else
-                {
-                    Debug.LogWarning($"Enemy {index + 1} (Rigged): No Enemy Ball prefab assigned! Enemy will not be able to throw projectiles.");
-                }
-                
-                // Fix leg bone positions (ensure LeftUpLeg and RightUpLeg are separated from spine)
-                LegBonePositionFixer legFixer = enemy.GetComponent<LegBonePositionFixer>();
-                if (legFixer == null)
-                {
-                    legFixer = enemy.AddComponent<LegBonePositionFixer>();
-                }
-                legFixer.hipWidth = 0.2f; // Standard hip width
-                legFixer.legForwardOffset = 0.05f; // Slight forward offset
-                legFixer.autoFixOnStart = true;
-                legFixer.showDebugInfo = true;
-                Debug.Log($"Enemy {index + 1} (Rigged): Added LegBonePositionFixer to ensure proper leg positioning");
-                
-                // Verify IK targets are assigned
-                if (enemyIKRig != null)
-                {
-                    bool hasHeadIK = enemyIKRig.head.ikTarget != null;
-                    bool hasLeftHandIK = enemyIKRig.leftHand.ikTarget != null;
-                    bool hasRightHandIK = enemyIKRig.rightHand.ikTarget != null;
-                    Debug.Log($"Enemy {index + 1} (Rigged): IK Targets - Head: {hasHeadIK}, LeftHand: {hasLeftHandIK}, RightHand: {hasRightHandIK}");
-                }
-                
-                // Set movement data - use previous round's movements
-                if (enemyIKReplay != null)
-                {
-                    if (movementData != null && movementData.Count > 0)
-                    {
-                        // Check if movement data has IK data
-                        bool hasIKData = movementData.Count > 0 && (
-                            movementData[0].headPosition != Vector3.zero ||
-                            movementData[0].leftHandPosition != Vector3.zero ||
-                            movementData[0].rightHandPosition != Vector3.zero
-                        );
-                        
-                        // Create a copy of the movement data to avoid reference issues
-                        List<MovementFrame> dataCopy = new List<MovementFrame>(movementData);
-                        enemyIKReplay.SetMovementData(dataCopy);
-                        
-                        // Add time offset for multiple enemies replaying same path
-                        enemyIKReplay.timeOffset = index * 0.5f; // Stagger enemies slightly
-                        
-                        // Enable IKReplay on next frame to prevent micro jitter
-                        StartCoroutine(EnableIKReplayNextFrame(enemyIKReplay));
-                        
-                        Debug.Log($"Enemy {index + 1} (Rigged): Assigned {movementData.Count} movement frames. Has IK Data: {hasIKData} (first frame time: {movementData[0].timestamp}, last: {movementData[movementData.Count - 1].timestamp})");
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"Enemy {index + 1} (Rigged): No movement data available for replay! (isFirstRound={isFirstRound}, index={index}, movementData is {(movementData == null ? "null" : $"empty (count={movementData.Count})")})");
-                    }
-                }
-            }
-            else
-            {
-                // Fallback to EnemyAI for non-rigged enemies (backward compatible)
-                if (existingIKReplay != null)
-                {
-                    Destroy(existingIKReplay);
-                }
-                
-                EnemyAI enemyAI = existingAI;
-                if (enemyAI == null)
-                {
-                    enemyAI = enemy.AddComponent<EnemyAI>();
-                    enemyAI.useInterpolation = true;
-                }
-                
-                // Set movement data - use previous round's movements
-                if (enemyAI != null)
-                {
-                    if (movementData != null && movementData.Count > 0)
-                    {
-                        // Create a copy of the movement data to avoid reference issues
-                        List<MovementFrame> dataCopy = new List<MovementFrame>(movementData);
-                        enemyAI.SetMovementData(dataCopy);
-                        
-                        // Add time offset for multiple enemies replaying same path
-                        enemyAI.timeOffset = index * 0.5f; // Stagger enemies slightly
-                        
-                        Debug.Log($"Enemy {index + 1} (Basic): Assigned {movementData.Count} movement frames (first frame time: {movementData[0].timestamp}, last: {movementData[movementData.Count - 1].timestamp})");
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"Enemy {index + 1} (Basic): No movement data available for replay! (isFirstRound={isFirstRound}, index={index}, movementData is {(movementData == null ? "null" : $"empty (count={movementData.Count})")})");
-                    }
-                }
-            }
+            legFixer.hipWidth = 0.2f;
+            legFixer.legForwardOffset = 0.05f;
+            legFixer.autoFixOnStart = true;
+            legFixer.showDebugInfo = false;
         }
     }
     
@@ -591,18 +409,6 @@ public class EnemySpawner : MonoBehaviour
         }
         
         return new Vector3(x, y, z);
-    }
-    
-    /// <summary>
-    /// Enable IKReplay on next frame to prevent micro jitter on first frame
-    /// </summary>
-    private IEnumerator EnableIKReplayNextFrame(EnemyIKReplay ikReplay)
-    {
-        yield return null; // Wait one frame
-        if (ikReplay != null)
-        {
-            ikReplay.enabled = true;
-        }
     }
     
     /// <summary>

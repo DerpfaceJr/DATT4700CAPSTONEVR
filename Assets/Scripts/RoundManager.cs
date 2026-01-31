@@ -15,9 +15,6 @@ public class RoundManager : MonoBehaviour
     public bool debugMode = true;
     
     [Header("References")]
-    [Tooltip("Player movement recorder")]
-    public PlayerMovementRecorder movementRecorder;
-    
     [Tooltip("Enemy spawner")]
     public EnemySpawner enemySpawner;
     
@@ -34,9 +31,12 @@ public class RoundManager : MonoBehaviour
     [Tooltip("Y position threshold for player death (falling)")]
     public float deathYThreshold = -10f;
     
+    [Tooltip("Offset from player position when spawning new enemy (round 2+); avoids spawning inside player")]
+    public float spawnOffsetFromPlayer = 1.5f;
+    
     private List<GameObject> currentEnemies = new List<GameObject>();
-    private Dictionary<int, List<MovementFrame>> roundMovementData = new Dictionary<int, List<MovementFrame>>();
-    private Dictionary<GameObject, int> enemyRoundAssignments = new Dictionary<GameObject, int>(); // Tracks which round data each enemy uses
+    private Dictionary<GameObject, int> enemyRoundAssignments = new Dictionary<GameObject, int>();
+    private Vector3 lastRoundEndPlayerPosition;
     private bool isRoundActive = false;
     private bool gameOver = false;
     private int enemiesSpawnedThisRound = 0; // Track how many enemies were spawned in current round
@@ -51,11 +51,6 @@ public class RoundManager : MonoBehaviour
     void Start()
     {
         // Find components if not assigned
-        if (movementRecorder == null)
-        {
-            movementRecorder = FindObjectOfType<PlayerMovementRecorder>();
-        }
-        
         if (enemySpawner == null)
         {
             enemySpawner = FindObjectOfType<EnemySpawner>();
@@ -181,8 +176,7 @@ public class RoundManager : MonoBehaviour
             }
         }
         
-        // Determine which enemy "slots" need to be filled
-        // Each slot represents a round: slot 1 = Round 1 (static), slot 2 = Round 2 (replays R1), etc.
+        // Determine which enemy "slots" need to be filled (1 more enemy per round: round 1 = 1, round 2 = 2, etc.)
         int targetEnemyCount = currentRound;
         
         // Build a set of which rounds are already represented by living enemies
@@ -212,30 +206,34 @@ public class RoundManager : MonoBehaviour
                     continue;
                 }
                 
-                // Determine the movement data for this slot
-                // Slot 1 (Round 1) = static, Slot 2 (Round 2) = Round 1 data, Slot N = Round N-1 data
-                List<MovementFrame> movementDataForSlot = null;
-                bool shouldBeStatic = (roundSlot == 1);
-                
-                if (!shouldBeStatic && roundMovementData.ContainsKey(roundSlot - 1))
+                bool isFirstRoundSlot = (roundSlot == 1);
+                Vector3 spawnPosition;
+                if (isFirstRoundSlot)
                 {
-                    movementDataForSlot = roundMovementData[roundSlot - 1];
+                    // Round 1: use spawner's default position (e.g. random within bounds)
+                    spawnPosition = enemySpawner.GetSpawnPositionForIndex(currentEnemies.Count, isRigged: !isFirstRoundSlot && enemySpawner.riggedEnemyPrefab != null);
+                }
+                else
+                {
+                    // Round 2+: spawn at player's last round-end position (with offset), clamped to map
+                    float pad = (playerRespawner != null) ? playerRespawner.wallPadding : 1f;
+                    spawnPosition = lastRoundEndPlayerPosition + new Vector3(spawnOffsetFromPlayer, 0f, spawnOffsetFromPlayer);
+                    spawnPosition.y = lastRoundEndPlayerPosition.y;
+                    spawnPosition = ClampSpawnToMapBounds(spawnPosition, pad);
                 }
                 
-                // Spawn the enemy
-                int enemyIndex = currentEnemies.Count; // Index for spawn position calculation
-                GameObject newEnemy = enemySpawner.SpawnSingleEnemy(
+                int enemyIndex = currentEnemies.Count;
+                GameObject newEnemy = enemySpawner.SpawnSingleEnemyAt(
                     enemyIndex,
-                    movementDataForSlot,
-                    shouldBeStatic
+                    spawnPosition,
+                    isFirstRoundSlot
                 );
                 
                 if (newEnemy != null)
                 {
                     currentEnemies.Add(newEnemy);
-                    enemyRoundAssignments[newEnemy] = roundSlot; // Track which round slot this enemy represents
+                    enemyRoundAssignments[newEnemy] = roundSlot;
                     
-                    // Subscribe to enemy death event
                     EnemyController controller = newEnemy.GetComponent<EnemyController>();
                     if (controller != null)
                     {
@@ -244,11 +242,14 @@ public class RoundManager : MonoBehaviour
                     
                     if (debugMode)
                     {
-                        string dataInfo = shouldBeStatic ? "Static" : $"Round {roundSlot - 1} data ({(movementDataForSlot?.Count ?? 0)} frames)";
-                        Debug.Log($"Spawned enemy for slot {roundSlot} with {dataInfo}. Total enemies: {currentEnemies.Count}");
+                        Debug.Log($"Spawned enemy for slot {roundSlot} at {spawnPosition}. Total enemies: {currentEnemies.Count}");
                     }
                     
                     enemiesSpawnedThisRound++;
+                }
+                else
+                {
+                    Debug.LogWarning($"[RoundManager] SpawnSingleEnemyAt returned null for slot {roundSlot}. Assign enemy prefab on EnemySpawner.");
                 }
             }
             
@@ -256,12 +257,6 @@ public class RoundManager : MonoBehaviour
             {
                 Debug.Log($"Round {currentRound}: Finished spawning. Total enemies: {currentEnemies.Count} (target: {targetEnemyCount})");
             }
-        }
-        
-        // Start recording player movements
-        if (movementRecorder != null)
-        {
-            movementRecorder.StartRecording();
         }
         
         // Trigger round start event
@@ -330,22 +325,13 @@ public class RoundManager : MonoBehaviour
             Debug.Log($"=== Round {currentRound} Complete! ===");
         }
         
-        // Stop recording and save movement data for this round
-        if (movementRecorder != null)
+        // Store player position for next round's new enemy spawn
+        if (playerObject != null)
         {
-            List<MovementFrame> thisRoundMovements = movementRecorder.StopRecording();
-            
-            // Store movement data for this round (will be used by next round's new enemy)
-            if (thisRoundMovements != null && thisRoundMovements.Count > 0)
+            lastRoundEndPlayerPosition = playerObject.transform.position;
+            if (debugMode)
             {
-                roundMovementData[currentRound] = thisRoundMovements;
-                
-                if (debugMode)
-                {
-                    Debug.Log($"Recorded {thisRoundMovements.Count} movement frames for round {currentRound}");
-                    Debug.Log($"First frame: pos={thisRoundMovements[0].position}, time={thisRoundMovements[0].timestamp}");
-                    Debug.Log($"Last frame: pos={thisRoundMovements[thisRoundMovements.Count - 1].position}, time={thisRoundMovements[thisRoundMovements.Count - 1].timestamp}");
-                }
+                Debug.Log($"Stored last round end player position: {lastRoundEndPlayerPosition}");
             }
         }
         
@@ -409,7 +395,6 @@ public class RoundManager : MonoBehaviour
     {
         gameOver = false;
         currentRound = 1;
-        roundMovementData.Clear();
         
         // Clear enemies
         if (enemySpawner != null)
@@ -417,12 +402,7 @@ public class RoundManager : MonoBehaviour
             enemySpawner.ClearEnemies();
         }
         currentEnemies.Clear();
-        
-        // Clear movement data
-        if (movementRecorder != null)
-        {
-            movementRecorder.ClearData();
-        }
+        enemyRoundAssignments.Clear();
         
         if (debugMode)
         {
@@ -453,6 +433,25 @@ public class RoundManager : MonoBehaviour
         return currentEnemies.Count;
     }
     
+    /// <summary>
+    /// Clamp a spawn position to map bounds (WestWall, EastWall, NorthWall, SouthWall).
+    /// </summary>
+    private Vector3 ClampSpawnToMapBounds(Vector3 pos, float wallPadding)
+    {
+        GameObject w = GameObject.Find("WestWall");
+        GameObject e = GameObject.Find("EastWall");
+        GameObject s = GameObject.Find("SouthWall");
+        GameObject n = GameObject.Find("NorthWall");
+        float minX = -10f, maxX = 10f, minZ = -10f, maxZ = 10f;
+        if (w != null) minX = w.transform.position.x + wallPadding;
+        if (e != null) maxX = e.transform.position.x - wallPadding;
+        if (s != null) minZ = s.transform.position.z + wallPadding;
+        if (n != null) maxZ = n.transform.position.z - wallPadding;
+        pos.x = Mathf.Clamp(pos.x, minX, maxX);
+        pos.z = Mathf.Clamp(pos.z, minZ, maxZ);
+        return pos;
+    }
+
     /// <summary>
     /// Continue to the next round (called by cutscene when finished)
     /// </summary>

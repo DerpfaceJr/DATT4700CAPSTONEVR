@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [System.Serializable]
 public class VRMap
@@ -28,10 +28,10 @@ public class IKTargetFollowVRRig : MonoBehaviour
     // Update is called once per frame
     void LateUpdate()
     {
-        // Check if VR targets are null (enemy mode - EnemyIKReplay handles IK targets directly)
+        // Check if VR targets are null (enemy mode - IK can be driven by seek/attack script if needed)
         if (head.vrTarget == null || leftHand.vrTarget == null || rightHand.vrTarget == null)
         {
-            // Enemy mode: Skip VR mapping, EnemyIKReplay will set IK targets directly
+            // Enemy mode: Skip VR mapping
             // Only update body position from head IK target if it exists
             //if (head.ikTarget != null)
             //{

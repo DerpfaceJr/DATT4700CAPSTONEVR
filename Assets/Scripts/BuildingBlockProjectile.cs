@@ -18,6 +18,10 @@ public class BuildingBlockProjectile : MonoBehaviour
     private bool wasThrown = false;
     private float throwTime = 0f;
     private const float THROW_TIMEOUT = 5f; // Stop tracking after 5 seconds
+
+    /// <summary>Set when the player releases this object (VRGrabThrow). Used so only player throws damage enemies.</summary>
+    private float thrownByPlayerTime = -999f;
+    private const float THROW_VALID_SECONDS = 3f; // Only count as "player throw" for this long after release
     
     void Start()
     {
@@ -105,6 +109,18 @@ public class BuildingBlockProjectile : MonoBehaviour
         return rb.linearVelocity.magnitude > minThrowVelocity;
     }
     
+    /// <summary>Call when the player releases this object with a throw (e.g. from VRGrabThrow).</summary>
+    public void MarkThrownByPlayer()
+    {
+        thrownByPlayerTime = Time.time;
+    }
+
+    /// <summary>True if the player threw this object recently (so it can damage enemies; walking into it does not).</summary>
+    public bool WasThrownByPlayer()
+    {
+        return thrownByPlayerTime > 0f && (Time.time - thrownByPlayerTime) < THROW_VALID_SECONDS;
+    }
+
     /// <summary>
     /// Get the current velocity magnitude
     /// </summary>

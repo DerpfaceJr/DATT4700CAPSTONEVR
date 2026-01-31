@@ -1107,21 +1107,16 @@ public class VRGrabThrow : MonoBehaviour
             rbToRelease.angularVelocity = Random.insideUnitSphere * Mathf.Min(throwVelocity.magnitude * 0.3f, 10f);
         }
         
+        // Mark as thrown by player so CombatSystem only counts player throws (not enemy walking into objects)
+        BuildingBlockProjectile projectile = rbToRelease.GetComponent<BuildingBlockProjectile>();
+        if (projectile != null)
+        {
+            projectile.MarkThrownByPlayer();
+        }
+
         if (debugMode)
         {
             Debug.Log($"[VRGrabThrow] Released {rbToRelease.name} with velocity: {throwVelocity.magnitude:F2} m/s");
-        }
-        
-        // Track the throw for projectile replay system
-        ProjectileThrowTracker tracker = FindObjectOfType<ProjectileThrowTracker>();
-        if (tracker != null)
-        {
-            tracker.TrackObject(rbToRelease.gameObject);
-            Debug.Log($"[VRGrabThrow] Tracking {rbToRelease.name} for projectile replay");
-        }
-        else
-        {
-            Debug.LogWarning("[VRGrabThrow] No ProjectileThrowTracker found! Throws will not be recorded for enemy replay.");
         }
         
         grabbedObject = null;

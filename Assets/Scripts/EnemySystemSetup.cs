@@ -31,14 +31,6 @@ public class EnemySystemSetup : MonoBehaviour
             vrMovement.AddComponent<VRMovementController>();
         }
         
-        // Add PlayerMovementRecorder if missing
-        if (vrMovement.GetComponent<PlayerMovementRecorder>() == null)
-        {
-            PlayerMovementRecorder recorder = vrMovement.AddComponent<PlayerMovementRecorder>();
-            recorder.recordInterval = 0.1f;
-            recorder.maxFrames = 0;
-        }
-        
         // Find or create RoundManager
         GameObject roundManager = GameObject.Find("RoundManager");
         if (roundManager == null)
@@ -50,7 +42,6 @@ public class EnemySystemSetup : MonoBehaviour
         if (roundManager.GetComponent<RoundManager>() == null)
         {
             RoundManager rm = roundManager.AddComponent<RoundManager>();
-            rm.movementRecorder = vrMovement.GetComponent<PlayerMovementRecorder>();
             rm.debugMode = true;
             rm.deathYThreshold = -10f;
         }
@@ -92,7 +83,6 @@ public class EnemySystemSetup : MonoBehaviour
         RoundManager rmComponent = roundManager.GetComponent<RoundManager>();
         if (rmComponent != null)
         {
-            rmComponent.movementRecorder = vrMovement.GetComponent<PlayerMovementRecorder>();
             rmComponent.enemySpawner = enemySpawner.GetComponent<EnemySpawner>();
             rmComponent.playerRespawner = playerRespawner.GetComponent<PlayerRespawner>();
             

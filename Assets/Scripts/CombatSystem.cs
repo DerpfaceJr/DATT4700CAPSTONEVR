@@ -125,26 +125,22 @@ public class CombatSystem : MonoBehaviour
             //}
 
             InstakillEnemy(collidingObject, velocityMagnitude, "SWORD KILL");
+            usedObjects.Add(collidingObject);
+            StartCoroutine(ClearUsedObject(collidingObject, 2f));
+            return;
         }
         
-        // If it's a building block projectile, use its velocity check
+        // If it's a building block projectile, only count when the player threw it (not when enemy walks into it)
         if (projectile != null)
         {
+            if (!projectile.WasThrownByPlayer())
+            {
+                return; // Object was not recently thrown by player (e.g. enemy walked into it)
+            }
             // Use projectile's velocity magnitude for more accurate detection
             velocityMagnitude = projectile.GetVelocityMagnitude();
-            
-            // For instakill mode, use lower threshold
-            if (instakillEnabled)
+            if (velocityMagnitude < instakillMinVelocity)
             {
-                if (velocityMagnitude < instakillMinVelocity)
-                {
-                    // Too slow for instakill
-                    return;
-                }
-            }
-            else if (!projectile.IsThrown())
-            {
-                // Projectile not thrown fast enough (normal mode)
                 return;
             }
         }
