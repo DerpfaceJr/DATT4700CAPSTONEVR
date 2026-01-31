@@ -97,6 +97,7 @@ public class EnemySpawner : MonoBehaviour
         }
         
         EnsureEnemyComponents(enemy, index, isFirstRound);
+        enemy.tag = "Enemy"; // Required for PlayerLoseOnEnemyTouch and other systems
         enemy.transform.position = worldPosition;
         return enemy;
     }
@@ -175,39 +176,9 @@ public class EnemySpawner : MonoBehaviour
             rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         }
 
-        /**
-         * Make sure enemy and enemy prefab has collider already, can ignore
-         **/
-
-        //// Ensure enemy has a collider for physics and combat
-        //Collider collider = enemy.GetComponent<Collider>();
-        //if (collider == null)
-        //{
-        //    // Add CapsuleCollider for rigged characters (encompasses body)
-        //    //BoxCollider capsule = enemy.AddComponent<BoxCollider>();
-
-        //    // Set collider for standing character with hips at Y=1.0
-        //    // Collider center at Y=-1.0 as requested by user
-        //    // This positions the collider lower to match the visual body better
-
-        //    //Test Change org is -1
-        //    //capsule.center = new Vector3(-0.5f, 0.7f, 0.007173032f); // Center below root (user requested Y=-1)
-        //    // Add BoxCollider for rigged characters
-        //    BoxCollider box = enemy.AddComponent<BoxCollider>();
-
-        //    // Set box size (X, Y, Z)
-        //    box.size = new Vector3(1f, 1.946584f, 0.4289667f);
-
-        //    // Set box center (relative to enemy root)
-        //    box.center = new Vector3(-0.5f, 0.7f, 0.007173032f);
-
-
-        //    //capsule.radius = 0.35f; // Slightly narrower for more precise hits
-        //    //capsule.height = 2.0f; // Full standing height
-        //    //capsule.direction = 1; // Y-axis (vertical)
-
-        //    //Debug.Log($"Added CapsuleCollider to enemy {enemy.name}: center={capsule.center}, radius={capsule.radius}, height={capsule.height}");
-        //}
+        // Ensure enemy root has a non-trigger body collider so when they walk into the player,
+        // the player's trigger detects them (PlayerLoseOnEnemyTouch). Prefabs may have no root collider or only triggers.
+        EnsureEnemyBodyCollider(enemy, hasRiggedCharacter);
 
         // Ensure enemy is red (if using prefab, check material)
         Renderer renderer = enemy.GetComponent<Renderer>();
@@ -280,6 +251,36 @@ public class EnemySpawner : MonoBehaviour
             legFixer.legForwardOffset = 0.05f;
             legFixer.autoFixOnStart = true;
             legFixer.showDebugInfo = false;
+        }
+    }
+
+    /// <summary>
+    /// Ensures the enemy root has at least one non-trigger collider so when the enemy walks
+    /// into the player, the player's body trigger (PlayerLoseOnEnemyTouch) detects contact.
+    /// </summary>
+    private void EnsureEnemyBodyCollider(GameObject enemy, bool isRigged)
+    {
+        Collider[] colliders = enemy.GetComponents<Collider>();
+        foreach (Collider c in colliders)
+        {
+            if (c != null && !c.isTrigger)
+                return; // Already has a solid body collider
+        }
+        // No non-trigger collider on root: add a capsule so walking into the player triggers lose
+        CapsuleCollider body = enemy.AddComponent<CapsuleCollider>();
+        body.isTrigger = false;
+        body.direction = 1; // Y-axis
+        if (isRigged)
+        {
+            body.radius = 0.35f;
+            body.height = 2f;
+            body.center = new Vector3(0f, 1f, 0f); // standing character, center at waist
+        }
+        else
+        {
+            body.radius = 0.5f;
+            body.height = 1f;
+            body.center = Vector3.zero;
         }
     }
     

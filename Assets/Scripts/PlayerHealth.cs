@@ -9,17 +9,17 @@ public class PlayerHealth : MonoBehaviour
 {
     [Header("Health Settings")]
     [Tooltip("Maximum player health")]
-    public float maxHealth = 100f;
+    public float maxHealth = 1f;
     
     [Tooltip("Current player health")]
-    public float currentHealth = 100f;
+    public float currentHealth = 1f;
     
     [Tooltip("Invulnerability duration after taking damage")]
     public float invulnerabilityDuration = 1.0f;
     
     [Header("Death Settings")]
-    [Tooltip("Respawn player on death")]
-    public bool autoRespawn = true;
+    [Tooltip("Respawn player on death (false = game over handled by RoundManager)")]
+    public bool autoRespawn = false;
     
     [Tooltip("Delay before respawning")]
     public float respawnDelay = 2.0f;

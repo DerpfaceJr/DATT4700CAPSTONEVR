@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using System;
 
@@ -27,6 +28,9 @@ public class RoundManager : MonoBehaviour
     [Header("Player Death Settings")]
     [Tooltip("GameObject to check for player death (XR Origin)")]
     public GameObject playerObject;
+    
+    [Tooltip("Panel shown when player loses (e.g. YouLostPanel). Auto-found by name if not assigned.")]
+    public GameObject youLostPanel;
     
     [Tooltip("Y position threshold for player death (falling)")]
     public float deathYThreshold = -10f;
@@ -78,6 +82,34 @@ public class RoundManager : MonoBehaviour
                 xrOrigin = GameObject.Find("[BuildingBlock] Camera Rig");
             }
             playerObject = xrOrigin;
+        }
+        
+        if (youLostPanel == null)
+        {
+            // GameObject.Find only finds ACTIVE objects; YouLostPanel is inactive at start
+            youLostPanel = FindInSceneByName("YouLostPanel");
+            if (youLostPanel == null && debugMode)
+            {
+                Debug.LogWarning("RoundManager: YouLostPanel not found. Assign in Inspector or create a UI Panel named 'YouLostPanel'.");
+            }
+            else if (youLostPanel != null && debugMode)
+            {
+                Debug.Log("RoundManager: Found YouLostPanel (was inactive).");
+            }
+        }
+        
+        PlayerHealth playerHealth = playerObject != null ? playerObject.GetComponent<PlayerHealth>() : null;
+        if (playerHealth == null)
+        {
+            playerHealth = FindObjectOfType<PlayerHealth>();
+        }
+        if (playerHealth != null)
+        {
+            playerHealth.onDeath.AddListener(HandlePlayerDeath);
+        }
+        else if (debugMode)
+        {
+            Debug.LogWarning("RoundManager: PlayerHealth not found. HP-based game over (touch/projectile) will not trigger.");
         }
         
         // Start first round
@@ -376,6 +408,11 @@ public class RoundManager : MonoBehaviour
         gameOver = true;
         isRoundActive = false;
         
+        if (youLostPanel != null)
+        {
+            youLostPanel.SetActive(true);
+        }
+        
         if (debugMode)
         {
             Debug.Log("=== GAME OVER - Player Died ===");
@@ -395,6 +432,11 @@ public class RoundManager : MonoBehaviour
     {
         gameOver = false;
         currentRound = 1;
+        
+        if (youLostPanel != null)
+        {
+            youLostPanel.SetActive(false);
+        }
         
         // Clear enemies
         if (enemySpawner != null)
@@ -462,6 +504,34 @@ public class RoundManager : MonoBehaviour
             waitingForCutscene = false;
             StartRound(currentRound + 1);
         }
+    }
+
+    /// <summary>
+    /// Find a GameObject by name in the active scene, including inactive objects.
+    /// GameObject.Find() only finds active objects, so panels that start inactive are missed.
+    /// </summary>
+    private static GameObject FindInSceneByName(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return null;
+        GameObject[] roots = SceneManager.GetActiveScene().GetRootGameObjects();
+        foreach (GameObject root in roots)
+        {
+            Transform found = FindChildByName(root.transform, name);
+            if (found != null) return found.gameObject;
+        }
+        return null;
+    }
+
+    private static Transform FindChildByName(Transform parent, string name)
+    {
+        if (parent.name == name) return parent;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform child = parent.GetChild(i);
+            Transform found = FindChildByName(child, name);
+            if (found != null) return found;
+        }
+        return null;
     }
 }
 
