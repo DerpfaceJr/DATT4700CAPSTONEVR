@@ -40,8 +40,6 @@ public class RoundCompleteCutscene : MonoBehaviour
     private bool movementWasEnabled = true;
     private bool[] grabThrowWasEnabled;
 
-    //Round Text UI
-    public TextMeshProUGUI roundNumText;
 
     void Start()
     {
@@ -195,11 +193,9 @@ public class RoundCompleteCutscene : MonoBehaviour
         // Update text content
         if (roundCompleteText != null)
         {
-            int temp = roundNumber;
             roundCompleteText.text = string.Format(messageFormat, roundNumber);
-            roundNumText.text = (temp + 1).ToString();
         }
-        
+
         // Show panel
         if (roundCompletePanel != null)
         {

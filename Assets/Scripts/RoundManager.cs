@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using System;
+using TMPro;
 
 /// <summary>
 /// Manages round progression, enemy spawning, and game state
@@ -51,7 +52,10 @@ public class RoundManager : MonoBehaviour
     public event Action<int> OnRoundComplete;
     public event Action OnGameOver;
     public event Action OnGameReset;
-    
+
+    // Round Text Control
+    public TextMeshProUGUI roundNumText;
+
     void Start()
     {
         // Find components if not assigned
@@ -139,6 +143,7 @@ public class RoundManager : MonoBehaviour
         if (gameOver) return;
         
         currentRound = roundNumber;
+        roundNumText.text = currentRound.ToString();
         isRoundActive = true;
         
         if (debugMode)
