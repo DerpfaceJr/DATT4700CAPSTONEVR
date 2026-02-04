@@ -29,9 +29,13 @@ public class TextControl : MonoBehaviour
         resultText.gameObject.SetActive(false);
     }
 
+    /* =========================================================
+       * PROJECTILE — TRIGGER BASED
+       * ========================================================= */
+
     private void OnCollisionEnter(Collision collision)
     {
-        if (collision.gameObject.CompareTag("Enemy"))
+        if (collision.gameObject.CompareTag("Enemy") && gameObject.CompareTag("Sword") != true)
         {
             ShowText("Hit", Color.green);
         }
@@ -42,6 +46,17 @@ public class TextControl : MonoBehaviour
         //{
         //    ShowText("Miss", Color.red);
         //}
+    }
+
+    /* =========================================================
+       * MELEE — TRIGGER BASED (HELD SWORD)
+       * ========================================================= */
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.CompareTag("Enemy") && gameObject.CompareTag("Sword"))
+        {
+            ShowText("Hit", Color.green);
+        }
     }
 
     void ShowText(string message, Color color)

@@ -10,6 +10,10 @@ public class SwordPhysicsFix : MonoBehaviour
     private Grabbable grabbable;
     private bool wasGrabbed;
 
+    [Header("Blade Colliders (Triggers when held)")]
+    [Tooltip("ONLY colliders in this list will be triggers when the sword is held")]
+    public Collider[] bladeColliders;
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -17,6 +21,9 @@ public class SwordPhysicsFix : MonoBehaviour
 
         rb.useGravity = true;
         rb.isKinematic = false;
+
+        SetBladeTriggers(false);
+
     }
 
     void Update()
@@ -29,12 +36,14 @@ public class SwordPhysicsFix : MonoBehaviour
         {
             // Grabbed
             rb.isKinematic = true;
+            SetBladeTriggers(true);
         }
         else if (!isGrabbed && wasGrabbed)
         {
             // Released
             rb.isKinematic = false;
             rb.useGravity = true;
+            SetBladeTriggers(false);
 
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
@@ -45,5 +54,28 @@ public class SwordPhysicsFix : MonoBehaviour
         }
 
         wasGrabbed = isGrabbed;
+    }
+
+    private void SetBladeTriggers(bool value)
+    {
+        if (bladeColliders == null) return;
+
+        foreach (Collider col in bladeColliders)
+        {
+            if (col != null)
+                col.isTrigger = value;
+        }
+    }
+
+    public bool IsBladeCollider(Collider col)
+    {
+        if (bladeColliders == null) return false;
+
+        foreach (Collider blade in bladeColliders)
+        {
+            if (blade == col)
+                return true;
+        }
+        return false;
     }
 }
