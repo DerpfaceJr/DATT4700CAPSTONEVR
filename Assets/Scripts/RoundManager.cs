@@ -39,6 +39,14 @@ public class RoundManager : MonoBehaviour
     [Tooltip("Offset from player position when spawning new enemy (round 2+); avoids spawning inside player")]
     public float spawnOffsetFromPlayer = 1.5f;
     
+    [Header("Audio")]
+    [Tooltip("AudioSource for SFX (e.g. on Audio Manager). Auto-finds GameObject named 'AudioManager' if not set.")]
+    public AudioSource sfxAudioSource;
+    [Tooltip("Sound played when an enemy is killed. Assign Death clip (e.g. Assets/Audio/Death.mp3).")]
+    public AudioClip enemyDeathClip;
+    [Tooltip("Sound played when you finish a round (round 2+). Assign Win clip (e.g. Assets/Audio/Win.mp3).")]
+    public AudioClip winClip;
+    
     private List<GameObject> currentEnemies = new List<GameObject>();
     private Dictionary<GameObject, int> enemyRoundAssignments = new Dictionary<GameObject, int>();
     private Vector3 lastRoundEndPlayerPosition;
@@ -114,6 +122,17 @@ public class RoundManager : MonoBehaviour
         else if (debugMode)
         {
             Debug.LogWarning("RoundManager: PlayerHealth not found. HP-based game over (touch/projectile) will not trigger.");
+        }
+        
+        if (sfxAudioSource == null)
+        {
+            GameObject audioManagerObj = GameObject.Find("AudioManager");
+            if (audioManagerObj != null)
+            {
+                sfxAudioSource = audioManagerObj.GetComponent<AudioSource>();
+                if (sfxAudioSource != null && debugMode)
+                    Debug.Log("RoundManager: Using AudioSource from AudioManager for SFX.");
+            }
         }
         
         // Start first round
@@ -305,6 +324,10 @@ public class RoundManager : MonoBehaviour
     /// </summary>
     private void OnEnemyDefeated(EnemyController enemy)
     {
+        // Play death sound effect
+        if (sfxAudioSource != null && enemyDeathClip != null)
+            sfxAudioSource.PlayOneShot(enemyDeathClip);
+        
         // Remove from list
         GameObject enemyObj = enemy.gameObject;
         if (currentEnemies.Contains(enemyObj))
@@ -362,6 +385,10 @@ public class RoundManager : MonoBehaviour
             Debug.Log($"=== Round {currentRound} Complete! ===");
         }
         
+        // Play win SFX when round is cleared (not for round 1 / first enemy)
+        if (currentRound > 1 && sfxAudioSource != null && winClip != null)
+            sfxAudioSource.PlayOneShot(winClip);
+        
         // Store player position for next round's new enemy spawn
         if (playerObject != null)
         {
@@ -404,7 +431,7 @@ public class RoundManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Handle player death - show lose panel instantly, then reset after delay
+    /// Handle player death - reset game
     /// </summary>
     private void HandlePlayerDeath()
     {
@@ -413,10 +440,6 @@ public class RoundManager : MonoBehaviour
         gameOver = true;
         isRoundActive = false;
         
-        if (youLostPanel == null)
-        {
-            youLostPanel = FindInSceneByName("YouLostPanel");
-        }
         if (youLostPanel != null)
         {
             youLostPanel.SetActive(true);
@@ -427,7 +450,10 @@ public class RoundManager : MonoBehaviour
             Debug.Log("=== GAME OVER - Player Died ===");
         }
         
+        // Trigger game over event
         OnGameOver?.Invoke();
+        
+        // Reset game after a delay
         Invoke(nameof(ResetGame), 2f);
     }
     

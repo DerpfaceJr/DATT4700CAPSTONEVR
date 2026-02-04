@@ -263,13 +263,14 @@ public class EnemySpawner : MonoBehaviour
             combatSystem.instakillMinVelocity = 1.5f; // Prevent death from touching static objects
         }
         
-        // Add seek-and-attack behaviour for all enemies
+        // Add seek-and-attack behaviour for all enemies (first round enemy does not move)
         EnemySeekAndAttack seekAttack = enemy.GetComponent<EnemySeekAndAttack>();
         if (seekAttack == null)
         {
             seekAttack = enemy.AddComponent<EnemySeekAndAttack>();
         }
         seekAttack.moveSpeed = 3f;
+        seekAttack.enabled = !isFirstRound; // Only first round enemy stays still; round 2+ enemies move
         
         // Rigged: keep LegBonePositionFixer for proper leg positioning
         if (hasRiggedCharacter)
