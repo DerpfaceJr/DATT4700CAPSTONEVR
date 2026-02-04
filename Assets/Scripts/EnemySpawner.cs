@@ -106,15 +106,35 @@ public class EnemySpawner : MonoBehaviour
 
     /// <summary>
     /// Snap enemy to the nearest point on the NavMesh so they path around walls and can reach upper floors.
+    /// When the enemy has a FloorRef transform (feet), snaps so FloorRef is on the NavMesh instead of the root (waist).
     /// </summary>
     private void SnapEnemyToNavMesh(GameObject enemy)
     {
-        Vector3 pos = enemy.transform.position;
+        Transform floorRef = FindFloorRef(enemy.transform);
+        Vector3 pos = (floorRef != null) ? floorRef.position : enemy.transform.position;
         NavMeshHit hit;
         if (NavMesh.SamplePosition(pos, out hit, 5f, NavMesh.AllAreas))
         {
-            enemy.transform.position = hit.position;
+            if (floorRef != null)
+                enemy.transform.position = hit.position + (enemy.transform.position - floorRef.position);
+            else
+                enemy.transform.position = hit.position;
         }
+    }
+
+    private static Transform FindFloorRef(Transform root)
+    {
+        Transform t = root.Find("FloorRef");
+        if (t != null) return t;
+        foreach (Transform child in root)
+        {
+            if (child.name == "FloorRef") return child;
+            t = child.Find("FloorRef");
+            if (t != null) return t;
+        }
+        foreach (Transform t2 in root.GetComponentsInChildren<Transform>(true))
+            if (t2.name == "FloorRef") return t2;
+        return null;
     }
     
     /// <summary>
