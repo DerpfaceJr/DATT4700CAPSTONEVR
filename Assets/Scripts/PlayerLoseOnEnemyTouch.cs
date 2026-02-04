@@ -16,7 +16,7 @@ public class PlayerLoseOnEnemyTouch : MonoBehaviour
 
     [Tooltip("Extra radius/height on the body trigger so enemies are detected from the sides (not only when jumping on them). 0 = use CharacterController size only.")]
     [Range(0f, 0.5f)]
-    public float triggerPadding = 0.15f;
+    public float triggerPadding = 0.25f;
 
     private PlayerHealth playerHealth;
     private CapsuleCollider bodyTrigger;
@@ -35,6 +35,10 @@ public class PlayerLoseOnEnemyTouch : MonoBehaviour
         if (playerHealth == null)
         {
             Debug.LogWarning("PlayerLoseOnEnemyTouch: No PlayerHealth found on player. Enemy touch will not deal damage.");
+        }
+        else
+        {
+            touchDamage = Mathf.Max(touchDamage, playerHealth.maxHealth);
         }
 
         EnsureBodyTrigger();

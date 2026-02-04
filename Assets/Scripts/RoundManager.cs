@@ -404,7 +404,7 @@ public class RoundManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Handle player death - reset game
+    /// Handle player death - show lose panel instantly, then reset after delay
     /// </summary>
     private void HandlePlayerDeath()
     {
@@ -413,6 +413,10 @@ public class RoundManager : MonoBehaviour
         gameOver = true;
         isRoundActive = false;
         
+        if (youLostPanel == null)
+        {
+            youLostPanel = FindInSceneByName("YouLostPanel");
+        }
         if (youLostPanel != null)
         {
             youLostPanel.SetActive(true);
@@ -423,10 +427,7 @@ public class RoundManager : MonoBehaviour
             Debug.Log("=== GAME OVER - Player Died ===");
         }
         
-        // Trigger game over event
         OnGameOver?.Invoke();
-        
-        // Reset game after a delay
         Invoke(nameof(ResetGame), 2f);
     }
     

@@ -2,8 +2,8 @@ using UnityEngine;
 using UnityEngine.AI;
 
 /// <summary>
-/// Enemy behaviour: move toward the player (NavMesh pathfinding) and attack (ranged projectile).
-/// Uses the map's NavMesh so enemies can chase the player across floors/stairs.
+/// Enemy behaviour: move toward the player using NavMesh pathfinding (no walls, multi-floor).
+/// Falls back to direct movement only when not on NavMesh.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public class EnemySeekAndAttack : MonoBehaviour
@@ -18,40 +18,27 @@ public class EnemySeekAndAttack : MonoBehaviour
     [Tooltip("Player transform (auto-found by tag if not set)")]
     public Transform playerTarget;
 
-    [Header("Ranged Attack")]
-    [Tooltip("Distance at which enemy will shoot at player")]
-    public float attackRange = 8f;
-
-    [Tooltip("Cooldown between shots (seconds)")]
-    public float attackCooldown = 2f;
-
-    [Tooltip("Projectile prefab (e.g. Enemy Ball). If not set, uses EnemySpawner.enemyBallPrefab")]
-    public GameObject projectilePrefab;
-
-    [Tooltip("Speed of thrown projectile toward player")]
-    public float projectileSpeed = 12f;
-
-    [Tooltip("Height offset for spawn (e.g. hand height)")]
-    public float projectileSpawnHeightOffset = 0.5f;
-
-    [Tooltip("Tag for enemy projectiles")]
-    public string enemyProjectileTag = "EnemyProjectile";
-
-    [Tooltip("Layer name for enemy projectiles (optional)")]
-    public string enemyProjectileLayer = "EnemyProjectile";
-
     [Header("Map Bounds")]
     [Tooltip("Padding from walls so enemies stay inside play area")]
     public float wallPadding = 1f;
 
     private Rigidbody rb;
     private NavMeshAgent navAgent;
-    private float lastAttackTime = -999f;
     private bool isKinematic;
     private float boundsMinX, boundsMaxX, boundsMinZ, boundsMaxZ;
     private bool boundsValid;
     private float destinationUpdateInterval = 0.25f;
     private float nextDestinationTime;
+    private Vector3 lastDestination;
+    private bool hasSetDestination;
+    private float lastPlayerTargetSearchTime;
+    private float lastWarpAttemptTime = -999f;
+    private const float PLAYER_SEARCH_INTERVAL = 0.5f;
+    private const float MIN_DESTINATION_UPDATE_DISTANCE = 0.7f;
+    private const float MAX_DESTINATION_UPDATE_INTERVAL = 1f;
+    private const float MIN_VERTICAL_UPDATE_DISTANCE = 0.6f;
+    private const float WARP_RETRY_INTERVAL = 1f;
+    private const float NAVMESH_SAMPLE_RADIUS = 5f;
 
     void Start()
     {
@@ -70,51 +57,55 @@ public class EnemySeekAndAttack : MonoBehaviour
             }
             if (navAgent != null)
             {
+                navAgent.enabled = true;
                 navAgent.speed = moveSpeed;
-                navAgent.angularSpeed = 360f;
-                navAgent.acceleration = 8f;
-                navAgent.stoppingDistance = 0.5f;
+                navAgent.angularSpeed = 540f;
+                navAgent.acceleration = 16f;
+                navAgent.stoppingDistance = 0.2f;
                 navAgent.updatePosition = true;
                 navAgent.updateRotation = true;
                 navAgent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
+                navAgent.areaMask = -1;
                 if (rb != null)
                 {
                     rb.isKinematic = true; // Let NavMeshAgent control position
+                }
+                NavMeshHit hit;
+                if (NavMesh.SamplePosition(transform.position, out hit, NAVMESH_SAMPLE_RADIUS, NavMesh.AllAreas))
+                {
+                    navAgent.Warp(hit.position);
+                }
+                else
+                {
+                    navAgent.Warp(transform.position);
                 }
             }
         }
 
         CalculateMapBounds();
+        EnsurePlayerTarget();
 
-        if (playerTarget == null)
+        if (navAgent != null && navAgent.enabled && playerTarget != null)
         {
-            GameObject xr = GameObject.Find("XR Origin");
-            if (xr == null)
+            if (navAgent.isOnNavMesh)
             {
-                xr = GameObject.Find("[BuildingBlock] Camera Rig");
-            }
-            if (xr != null)
-            {
-                playerTarget = xr.transform;
-            }
-            else
-            {
-                GameObject player = GameObject.FindGameObjectWithTag("Player");
-                if (player != null)
-                {
-                    playerTarget = player.transform;
-                }
+                lastDestination = playerTarget.position;
+                navAgent.SetDestination(lastDestination);
+                hasSetDestination = true;
+                nextDestinationTime = Time.time + MAX_DESTINATION_UPDATE_INTERVAL;
             }
         }
+    }
 
-        if (projectilePrefab == null)
-        {
-            EnemySpawner spawner = FindObjectOfType<EnemySpawner>();
-            if (spawner != null)
-            {
-                projectilePrefab = spawner.enemyBallPrefab;
-            }
-        }
+    private void EnsurePlayerTarget()
+    {
+        if (playerTarget != null) return;
+        GameObject xr = GameObject.Find("XR Origin");
+        if (xr == null) xr = GameObject.Find("[BuildingBlock] Camera Rig");
+        if (xr != null) { playerTarget = xr.transform; return; }
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null) { playerTarget = player.transform; return; }
+        if (Camera.main != null) playerTarget = Camera.main.transform;
     }
 
     private void CalculateMapBounds()
@@ -153,30 +144,61 @@ public class EnemySeekAndAttack : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (playerTarget == null) return;
+        if (playerTarget == null)
+        {
+            if (Time.time - lastPlayerTargetSearchTime >= PLAYER_SEARCH_INTERVAL)
+            {
+                lastPlayerTargetSearchTime = Time.time;
+                EnsurePlayerTarget();
+            }
+            return;
+        }
 
         Vector3 toPlayer = playerTarget.position - transform.position;
-        float distance = toPlayer.magnitude;
         Vector3 toPlayerFlat = toPlayer;
         toPlayerFlat.y = 0f;
         float distanceFlat = toPlayerFlat.magnitude;
 
-        // Movement: NavMesh pathfinding (multi-floor) or direct movement
-        if (navAgent != null && navAgent.enabled && useNavMesh)
+        bool useDirectMovement = true;
+        if (navAgent != null && navAgent.enabled && useNavMesh && navAgent.isOnNavMesh)
         {
-            if (navAgent.isOnNavMesh)
+            useDirectMovement = false;
+            Vector3 targetPos = playerTarget.position;
+            float distFromLastDest = hasSetDestination ? Vector3.Distance(targetPos, lastDestination) : float.MaxValue;
+            float verticalDiff = hasSetDestination ? Mathf.Abs(targetPos.y - lastDestination.y) : float.MaxValue;
+            bool shouldUpdateDestination = !hasSetDestination
+                || distFromLastDest >= MIN_DESTINATION_UPDATE_DISTANCE
+                || verticalDiff >= MIN_VERTICAL_UPDATE_DISTANCE
+                || Time.time >= nextDestinationTime;
+            if (shouldUpdateDestination)
             {
-                if (Time.time >= nextDestinationTime)
-                {
-                    navAgent.SetDestination(playerTarget.position);
-                    nextDestinationTime = Time.time + destinationUpdateInterval;
-                }
-                navAgent.speed = moveSpeed;
+                navAgent.SetDestination(targetPos);
+                lastDestination = targetPos;
+                hasSetDestination = true;
+                nextDestinationTime = Time.time + MAX_DESTINATION_UPDATE_INTERVAL;
             }
+            navAgent.speed = moveSpeed;
         }
-        else if (distanceFlat > 0.01f)
+        else if (navAgent != null && navAgent.enabled && useNavMesh && !navAgent.isOnNavMesh)
         {
-            // Fallback: direct movement (no NavMesh or not on mesh)
+            if (Time.time - lastWarpAttemptTime >= WARP_RETRY_INTERVAL)
+            {
+                lastWarpAttemptTime = Time.time;
+                NavMeshHit hit;
+                if (NavMesh.SamplePosition(transform.position, out hit, NAVMESH_SAMPLE_RADIUS, NavMesh.AllAreas))
+                {
+                    navAgent.Warp(hit.position);
+                }
+                else
+                {
+                    navAgent.enabled = false;
+                }
+            }
+            useDirectMovement = !navAgent.isOnNavMesh;
+        }
+
+        if (useDirectMovement && distanceFlat > 0.01f)
+        {
             Vector3 direction = toPlayerFlat.normalized;
             Vector3 desiredVelocity = direction * moveSpeed;
 
@@ -215,73 +237,12 @@ public class EnemySeekAndAttack : MonoBehaviour
             }
         }
 
-        if (boundsValid && (navAgent == null || !navAgent.isOnNavMesh) && rb != null && !rb.isKinematic)
+        if (boundsValid && useDirectMovement && rb != null && !rb.isKinematic)
         {
             Vector3 pos = transform.position;
             pos.x = Mathf.Clamp(pos.x, boundsMinX, boundsMaxX);
             pos.z = Mathf.Clamp(pos.z, boundsMinZ, boundsMaxZ);
             transform.position = pos;
-        }
-
-        // Ranged attack when in range and cooldown elapsed (use flat distance for 2D range check)
-        if (distanceFlat <= attackRange && (Time.time - lastAttackTime) >= attackCooldown)
-        {
-            TryRangedAttack(toPlayerFlat.normalized, distanceFlat);
-        }
-    }
-
-    private void TryRangedAttack(Vector3 directionToPlayer, float distance)
-    {
-        if (projectilePrefab == null) return;
-
-        lastAttackTime = Time.time;
-
-        Vector3 spawnPos = transform.position + Vector3.up * projectileSpawnHeightOffset;
-        Quaternion spawnRot = Quaternion.LookRotation(directionToPlayer);
-        GameObject projectile = Instantiate(projectilePrefab, spawnPos, spawnRot);
-        projectile.name = "Enemy Ball (Seek)";
-
-        projectile.tag = enemyProjectileTag;
-        int layerIndex = LayerMask.NameToLayer(enemyProjectileLayer);
-        if (layerIndex >= 0)
-        {
-            projectile.layer = layerIndex;
-        }
-
-        Rigidbody projectileRb = projectile.GetComponent<Rigidbody>();
-        if (projectileRb != null)
-        {
-            Vector3 velocity = directionToPlayer * projectileSpeed;
-            velocity.y = 0f;
-            projectileRb.linearVelocity = velocity;
-            projectileRb.angularVelocity = Vector3.zero;
-            projectileRb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-        }
-
-        if (projectile.GetComponent<BuildingBlockProjectile>() == null)
-        {
-            projectile.AddComponent<BuildingBlockProjectile>();
-        }
-        if (projectile.GetComponent<EnemyProjectileDamage>() == null)
-        {
-            projectile.AddComponent<EnemyProjectileDamage>();
-        }
-
-        DisablePlayerGrabbing(projectile);
-    }
-
-    private void DisablePlayerGrabbing(GameObject projectile)
-    {
-        MonoBehaviour[] allComponents = projectile.GetComponents<MonoBehaviour>();
-        foreach (MonoBehaviour component in allComponents)
-        {
-            if (component == null) continue;
-            string typeName = component.GetType().Name.ToLower();
-            if ((typeName.Contains("grab") || typeName.Contains("interactable")) &&
-                !(component is BuildingBlockProjectile) && !(component is EnemyProjectileDamage))
-            {
-                Destroy(component);
-            }
         }
     }
 }

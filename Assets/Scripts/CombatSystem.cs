@@ -58,6 +58,8 @@ public class CombatSystem : MonoBehaviour
 
     /* =========================================================
      * PROJECTILES / THROWN OBJECTS — COLLISION BASED
+     * Only damage when the throwable/weapon is moving fast (was thrown),
+     * not when the enemy walks into stationary objects.
      * ========================================================= */
     private void OnCollisionEnter(Collision collision)
     {
@@ -67,9 +69,11 @@ public class CombatSystem : MonoBehaviour
         // Sword handled by trigger
         if (rb.CompareTag("Sword")) return;
 
-        float velocity = collision.relativeVelocity.magnitude;
+        // Use the hitting object's speed, not relative velocity, so enemies don't die
+        // when walking into stationary throwables or weapons on the ground
+        float objectSpeed = rb.linearVelocity.magnitude;
         float requiredVelocity = instakillEnabled ? instakillMinVelocity : minDamageVelocity;
-        if (velocity < requiredVelocity) return;
+        if (objectSpeed < requiredVelocity) return;
 
         EnemyController enemy = GetComponent<EnemyController>();
         if (enemy == null) return;
@@ -77,11 +81,11 @@ public class CombatSystem : MonoBehaviour
         if (instakillEnabled)
         {
             enemy.TakeDamage(enemy.maxHealth * 100f);
-            Debug.Log($"[CombatSystem] PROJECTILE INSTAKILL (v={velocity:F2})");
+            Debug.Log($"[CombatSystem] PROJECTILE INSTAKILL (v={objectSpeed:F2})");
         }
         else
         {
-            float damage = velocity * rb.mass * damageMultiplier;
+            float damage = objectSpeed * rb.mass * damageMultiplier;
             enemy.TakeDamage(damage);
         }
     }

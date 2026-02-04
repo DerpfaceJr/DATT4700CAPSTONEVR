@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -99,7 +100,21 @@ public class EnemySpawner : MonoBehaviour
         EnsureEnemyComponents(enemy, index, isFirstRound);
         enemy.tag = "Enemy"; // Required for PlayerLoseOnEnemyTouch and other systems
         enemy.transform.position = worldPosition;
+        SnapEnemyToNavMesh(enemy);
         return enemy;
+    }
+
+    /// <summary>
+    /// Snap enemy to the nearest point on the NavMesh so they path around walls and can reach upper floors.
+    /// </summary>
+    private void SnapEnemyToNavMesh(GameObject enemy)
+    {
+        Vector3 pos = enemy.transform.position;
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(pos, out hit, 5f, NavMesh.AllAreas))
+        {
+            enemy.transform.position = hit.position;
+        }
     }
     
     /// <summary>
@@ -235,9 +250,6 @@ public class EnemySpawner : MonoBehaviour
             seekAttack = enemy.AddComponent<EnemySeekAndAttack>();
         }
         seekAttack.moveSpeed = 3f;
-        seekAttack.attackRange = 8f;
-        seekAttack.attackCooldown = 2f;
-        seekAttack.projectilePrefab = enemyBallPrefab;
         
         // Rigged: keep LegBonePositionFixer for proper leg positioning
         if (hasRiggedCharacter)
