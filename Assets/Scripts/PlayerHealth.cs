@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.UI;
 
 /// <summary>
 /// Manages player health and death
@@ -10,6 +11,7 @@ public class PlayerHealth : MonoBehaviour
     [Header("Health Settings")]
     [Tooltip("Maximum player health")]
     public float maxHealth = 1f;
+    public Image healthBar;
     
     [Tooltip("Current player health")]
     public float currentHealth = 1f;
@@ -34,10 +36,12 @@ public class PlayerHealth : MonoBehaviour
     private float invulnerabilityEndTime = 0f;
     private PlayerRespawner respawner;
     private bool isDead = false;
+
     
     void Start()
     {
         currentHealth = maxHealth;
+        healthBar.fillAmount = currentHealth / maxHealth;
         respawner = FindObjectOfType<PlayerRespawner>();
         
         if (respawner == null)
@@ -70,7 +74,8 @@ public class PlayerHealth : MonoBehaviour
         // Apply damage
         currentHealth -= damage;
         currentHealth = Mathf.Max(0f, currentHealth);
-        
+        healthBar.fillAmount = GetHealthPercent();
+
         Debug.Log($"PlayerHealth: Took {damage:F1} damage! Current health: {currentHealth:F1}/{maxHealth:F1}");
         
         // Invoke events
@@ -99,7 +104,8 @@ public class PlayerHealth : MonoBehaviour
         float oldHealth = currentHealth;
         currentHealth += amount;
         currentHealth = Mathf.Min(currentHealth, maxHealth);
-        
+        healthBar.fillAmount = GetHealthPercent();
+
         float actualHealed = currentHealth - oldHealth;
         
         if (actualHealed > 0)
@@ -145,6 +151,7 @@ public class PlayerHealth : MonoBehaviour
     {
         isDead = false;
         currentHealth = maxHealth;
+        healthBar.fillAmount = GetHealthPercent();
         isInvulnerable = false;
         
         Debug.Log("PlayerHealth: Player respawned!");
@@ -181,6 +188,7 @@ public class PlayerHealth : MonoBehaviour
     public void ResetHealth()
     {
         currentHealth = maxHealth;
+        healthBar.fillAmount = GetHealthPercent();
         isDead = false;
         isInvulnerable = false;
         onHealthChanged?.Invoke(currentHealth);
