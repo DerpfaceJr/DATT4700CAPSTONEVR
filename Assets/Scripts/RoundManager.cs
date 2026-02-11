@@ -113,6 +113,12 @@ public class RoundManager : MonoBehaviour
         PlayerHealth playerHealth = playerObject != null ? playerObject.GetComponent<PlayerHealth>() : null;
         if (playerHealth == null)
         {
+            GameObject playerTagged = GameObject.FindGameObjectWithTag("Player");
+            if (playerTagged != null)
+                playerHealth = playerTagged.GetComponent<PlayerHealth>() ?? playerTagged.GetComponentInChildren<PlayerHealth>();
+        }
+        if (playerHealth == null)
+        {
             playerHealth = FindObjectOfType<PlayerHealth>();
         }
         if (playerHealth != null)
@@ -431,6 +437,14 @@ public class RoundManager : MonoBehaviour
     }
     
     /// <summary>
+    /// Public entry point to trigger game over (e.g. when enemy touch kills player).
+    /// </summary>
+    public void TriggerGameOver()
+    {
+        HandlePlayerDeath();
+    }
+
+    /// <summary>
     /// Handle player death - reset game
     /// </summary>
     private void HandlePlayerDeath()
@@ -443,6 +457,13 @@ public class RoundManager : MonoBehaviour
         if (youLostPanel != null)
         {
             youLostPanel.SetActive(true);
+            Transform p = youLostPanel.transform.parent;
+            while (p != null)
+            {
+                if (!p.gameObject.activeSelf)
+                    p.gameObject.SetActive(true);
+                p = p.parent;
+            }
         }
         
         if (debugMode)

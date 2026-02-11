@@ -26,6 +26,10 @@ public class PlayerRespawner : MonoBehaviour
     [Tooltip("Maximum number of previous spawn locations to track")]
     public int maxTrackedSpawnLocations = 20;
     
+    [Header("Enemy Avoidance")]
+    [Tooltip("Minimum distance from enemies when spawning (prevents instant death)")]
+    public float minDistanceFromEnemies = 2.5f;
+    
     private Transform xrOrigin;
     private Bounds spawnBounds;
     private List<Vector3> previousSpawnLocations = new List<Vector3>();
@@ -200,10 +204,27 @@ public class PlayerRespawner : MonoBehaviour
                 }
             }
             
+            if (!IsFarEnoughFromEnemies(position))
+                return false;
+            
             return true;
         }
         
         return false;
+    }
+    
+    private bool IsFarEnoughFromEnemies(Vector3 position)
+    {
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        Vector2 pos2D = new Vector2(position.x, position.z);
+        foreach (GameObject enemy in enemies)
+        {
+            if (enemy == null) continue;
+            Vector2 enemy2D = new Vector2(enemy.transform.position.x, enemy.transform.position.z);
+            if (Vector2.Distance(pos2D, enemy2D) < minDistanceFromEnemies)
+                return false;
+        }
+        return true;
     }
     
     /// <summary>

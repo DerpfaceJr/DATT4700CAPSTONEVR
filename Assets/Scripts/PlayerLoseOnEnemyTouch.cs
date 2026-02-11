@@ -18,8 +18,18 @@ public class PlayerLoseOnEnemyTouch : MonoBehaviour
     [Range(0f, 0.5f)]
     public float triggerPadding = 0.25f;
 
+    [Tooltip("Fallback: check distance to enemies every frame (use when trigger/collision fails, e.g. VR rig setup).")]
+    public bool useProximityFallback = true;
+    [Tooltip("Proximity radius for fallback touch detection (enemy within this = touch).")]
+    public float proximityTouchRadius = 0.55f;
+    [Tooltip("Cooldown between touch damage (prevents multi-hit from physics jitter).")]
+    public float touchCooldown = 0.4f;
+    [Tooltip("Max vertical distance for touch (ignore enemy if more than this above/below player).")]
+    public float maxVerticalTouchDistance = 1.2f;
+
     private PlayerHealth playerHealth;
     private CapsuleCollider bodyTrigger;
+    private float lastTouchTime = -999f;
 
     void Start()
     {
@@ -47,6 +57,7 @@ public class PlayerLoseOnEnemyTouch : MonoBehaviour
     /// <summary>
     /// Ensures a trigger collider exists so we detect enemies walking INTO the player
     /// (OnControllerColliderHit only fires when the player moves into the enemy).
+    /// When no CharacterController on this object, relies on proximity fallback instead.
     /// </summary>
     private void EnsureBodyTrigger()
     {
@@ -68,32 +79,63 @@ public class PlayerLoseOnEnemyTouch : MonoBehaviour
         bodyTrigger.direction = 1; // Y-axis
     }
 
+    void FixedUpdate()
+    {
+        if (useProximityFallback && playerHealth != null && Time.time - lastTouchTime >= touchCooldown)
+        {
+            CheckProximityTouch();
+        }
+    }
+
     void OnCollisionEnter(Collision collision)
     {
-        if (IsEnemy(collision.gameObject) && playerHealth != null)
-        {
-            playerHealth.TakeDamage(touchDamage);
-        }
+        if (IsEnemy(collision.gameObject))
+            TryDealTouchDamage();
     }
 
     void OnTriggerEnter(Collider other)
     {
-        if (IsEnemy(other.gameObject) && playerHealth != null)
-        {
-            playerHealth.TakeDamage(touchDamage);
-        }
+        if (IsEnemy(other.gameObject))
+            TryDealTouchDamage();
     }
 
-    /// <summary>
-    /// Called when CharacterController hits a collider. Use this when the script
-    /// is on the same GameObject as the CharacterController (e.g. VRMovementController).
-    /// </summary>
     void OnControllerColliderHit(ControllerColliderHit hit)
     {
         if (hit == null || hit.gameObject == null) return;
-        if (IsEnemy(hit.gameObject) && playerHealth != null)
+        if (IsEnemy(hit.gameObject))
+            TryDealTouchDamage();
+    }
+
+    private void TryDealTouchDamage()
+    {
+        if (playerHealth == null) return;
+        if (Time.time - lastTouchTime < touchCooldown) return;
+        lastTouchTime = Time.time;
+        playerHealth.TakeDamage(touchDamage);
+        if (playerHealth != null && !playerHealth.IsAlive())
+            EnsureLosePanelShown();
+    }
+
+    private void EnsureLosePanelShown()
+    {
+        RoundManager rm = FindObjectOfType<RoundManager>();
+        if (rm != null)
+            rm.TriggerGameOver();
+    }
+
+    private void CheckProximityTouch()
+    {
+        Transform playerTransform = playerHealth.transform;
+        Vector3 playerPos = playerTransform.position;
+        Collider[] nearby = Physics.OverlapSphere(playerPos, proximityTouchRadius);
+        foreach (Collider c in nearby)
         {
-            playerHealth.TakeDamage(touchDamage);
+            if (c == null) continue;
+            if (!IsEnemy(c.gameObject)) continue;
+            float verticalDiff = Mathf.Abs(c.transform.position.y - playerPos.y);
+            if (verticalDiff > maxVerticalTouchDistance) continue;
+            TryDealTouchDamage();
+            return;
         }
     }
 
