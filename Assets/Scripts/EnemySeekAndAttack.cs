@@ -18,6 +18,16 @@ public class EnemySeekAndAttack : MonoBehaviour
     [Tooltip("Player transform (auto-found by tag if not set)")]
     public Transform playerTarget;
 
+    [Header("Separation")]
+    [Tooltip("Radius to detect nearby enemies (OverlapSphere)")]
+    public float separationRadius = 1.5f;
+    [Tooltip("Weight for moving toward player (higher = more seek)")]
+    public float seekWeight = 1f;
+    [Tooltip("Weight for moving away from other enemies (higher = more separation)")]
+    public float separationWeight = 1.5f;
+    [Tooltip("Distance ahead to set NavMesh destination when using blended direction")]
+    public float separationLookAhead = 4f;
+
     [Header("Map Bounds")]
     [Tooltip("Padding from walls so enemies stay inside play area")]
     public float wallPadding = 1f;
@@ -155,6 +165,23 @@ public class EnemySeekAndAttack : MonoBehaviour
         ForceUpright();
     }
 
+    private Vector3 ComputeSeparationVector()
+    {
+        Collider[] colliders = Physics.OverlapSphere(transform.position, separationRadius);
+        Vector3 sum = Vector3.zero;
+        foreach (Collider c in colliders)
+        {
+            if (c.transform.root == transform.root) continue;
+            if (!c.transform.root.CompareTag("Enemy")) continue;
+            Vector3 toNeighbor = c.transform.position - transform.position;
+            float dist = toNeighbor.magnitude;
+            if (dist < 0.01f) continue;
+            float weight = 1f - (dist / separationRadius);
+            sum += -(toNeighbor / dist) * weight;
+        }
+        return sum.sqrMagnitude > 0.01f ? sum.normalized : Vector3.zero;
+    }
+
     private void EnsurePlayerTarget()
     {
         if (playerTarget != null) return;
@@ -221,7 +248,15 @@ public class EnemySeekAndAttack : MonoBehaviour
         if (navAgent != null && navAgent.enabled && useNavMesh && navAgent.isOnNavMesh)
         {
             useDirectMovement = false;
-            Vector3 targetPos = playerTarget.position;
+            Vector3 baseTarget = playerTarget.position;
+            Vector3 separationDir = ComputeSeparationVector();
+            separationDir.y = 0f;
+            Vector3 separationOffset = separationDir * separationWeight * 0.5f;
+            Vector3 modifiedTarget = baseTarget + separationOffset;
+            NavMeshHit navHit;
+            if (NavMesh.SamplePosition(modifiedTarget, out navHit, 3f, NavMesh.AllAreas))
+                modifiedTarget = navHit.position;
+            Vector3 targetPos = modifiedTarget;
             float distFromLastDest = hasSetDestination ? Vector3.Distance(targetPos, lastDestination) : float.MaxValue;
             float verticalDiff = hasSetDestination ? Mathf.Abs(targetPos.y - lastDestination.y) : float.MaxValue;
             bool shouldUpdateDestination = !hasSetDestination
@@ -268,7 +303,11 @@ public class EnemySeekAndAttack : MonoBehaviour
 
         if (useDirectMovement && distanceFlat > 0.01f)
         {
-            Vector3 direction = toPlayerFlat.normalized;
+            Vector3 desiredDir = toPlayerFlat.normalized;
+            Vector3 separationDir = ComputeSeparationVector();
+            separationDir.y = 0f;
+            Vector3 blendedDir = desiredDir * seekWeight + separationDir * separationWeight;
+            Vector3 direction = blendedDir.sqrMagnitude > 0.01f ? blendedDir.normalized : desiredDir;
             Vector3 desiredVelocity = direction * moveSpeed;
             // When using FloorRef, keep kinematic so enemy doesn't fall; snap root so feet stay on ground
             bool useFloorRefGrounding = (floorRef != null && rb != null);
