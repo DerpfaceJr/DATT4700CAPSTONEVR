@@ -203,7 +203,8 @@ public class PlayerHealth : MonoBehaviour
         currentHealth = maxHealth;
         healthBar.fillAmount = currentHealth / maxHealth;
         isDead = false;
-        isInvulnerable = false;
+        ActivateInvulnerability();
+
         onHealthChanged?.Invoke(currentHealth);
     }
 }
