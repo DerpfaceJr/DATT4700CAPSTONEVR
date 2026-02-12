@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.UI;
 
 /// <summary>
 /// Manages player health and death
@@ -34,16 +35,25 @@ public class PlayerHealth : MonoBehaviour
     private float invulnerabilityEndTime = 0f;
     private PlayerRespawner respawner;
     private bool isDead = false;
+
+    [Header("Health Bar Red")]
+    public Image healthBar;
     
     void Start()
     {
         currentHealth = maxHealth;
+        healthBar.fillAmount = currentHealth / maxHealth;
+
+        Debug.Log($"[PlayerHealth Start] currentHealth={currentHealth}, fill={healthBar.fillAmount}");
+
         respawner = FindObjectOfType<PlayerRespawner>();
         
         if (respawner == null)
         {
             Debug.LogWarning("PlayerHealth: No PlayerRespawner found in scene!");
         }
+
+        ActivateInvulnerability();
     }
     
     void Update()
@@ -70,13 +80,15 @@ public class PlayerHealth : MonoBehaviour
         // Apply damage
         currentHealth -= damage;
         currentHealth = Mathf.Max(0f, currentHealth);
+        healthBar.fillAmount = currentHealth / maxHealth;
         
         Debug.Log($"PlayerHealth: Took {damage:F1} damage! Current health: {currentHealth:F1}/{maxHealth:F1}");
         
         // Invoke events
         onDamageTaken?.Invoke(damage);
         onHealthChanged?.Invoke(currentHealth);
-        
+        healthBar.fillAmount = currentHealth / maxHealth;
+
         // Check for death
         if (currentHealth <= 0f)
         {
@@ -118,7 +130,12 @@ public class PlayerHealth : MonoBehaviour
         invulnerabilityEndTime = Time.time + invulnerabilityDuration;
         Debug.Log($"PlayerHealth: Invulnerable for {invulnerabilityDuration:F1} seconds");
     }
-    
+
+    public bool IsInvulnerable()
+    {
+        return isInvulnerable;
+    }
+
     /// <summary>
     /// Handle player death
     /// </summary>
@@ -145,7 +162,10 @@ public class PlayerHealth : MonoBehaviour
     {
         isDead = false;
         currentHealth = maxHealth;
-        isInvulnerable = false;
+        healthBar.fillAmount = currentHealth / maxHealth;
+        ActivateInvulnerability();
+
+        //isInvulnerable = false;
         
         Debug.Log("PlayerHealth: Player respawned!");
         
@@ -181,6 +201,7 @@ public class PlayerHealth : MonoBehaviour
     public void ResetHealth()
     {
         currentHealth = maxHealth;
+        healthBar.fillAmount = currentHealth / maxHealth;
         isDead = false;
         isInvulnerable = false;
         onHealthChanged?.Invoke(currentHealth);

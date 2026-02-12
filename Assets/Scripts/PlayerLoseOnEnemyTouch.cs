@@ -48,7 +48,7 @@ public class PlayerLoseOnEnemyTouch : MonoBehaviour
         }
         else
         {
-            touchDamage = Mathf.Max(touchDamage, playerHealth.maxHealth);
+            //touchDamage = Mathf.Max(touchDamage, playerHealth.maxHealth);
         }
 
         EnsureBodyTrigger();
@@ -109,6 +109,7 @@ public class PlayerLoseOnEnemyTouch : MonoBehaviour
     private void TryDealTouchDamage()
     {
         if (playerHealth == null) return;
+        if (playerHealth.IsInvulnerable()) return;
         if (Time.time - lastTouchTime < touchCooldown) return;
         lastTouchTime = Time.time;
         playerHealth.TakeDamage(touchDamage);
