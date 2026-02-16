@@ -29,46 +29,6 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: Table2
     second: {fileID: 2100000, guid: 205f8b17f91134ab1b4b09c84440b250, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: computer mat
-    second: {fileID: 2100000, guid: 7a974a0207e534809aed892ea6445b2d, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: keyboard mat
-    second: {fileID: 2100000, guid: 357fc56c4b95c4eafa510ee73a935b5b, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: mouse mat
-    second: {fileID: 2100000, guid: 5100dc3d3180645de96905d73661bf38, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: screen mat
-    second: {fileID: 2100000, guid: b672e356d297945c189e1c75f02b948c, type: 2}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: computer tex
-    second: {fileID: 2800000, guid: 68b26b88ba9db4ed79306227cfe82497, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: keyboard tex
-    second: {fileID: 2800000, guid: 31c418cc8105342e983932d0b9d03b45, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: mouse tex
-    second: {fileID: 2800000, guid: bb4a8c7f52fb3443dba6d4664160d28d, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: screen tex
-    second: {fileID: 2800000, guid: 7caf8c12acf6c4d9a99429a5c6153688, type: 3}
   materials:
     materialImportMode: 2
     materialName: 0
