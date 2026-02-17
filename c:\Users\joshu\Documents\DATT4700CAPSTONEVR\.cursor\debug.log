@@ -130,3 +130,8 @@
 {"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Crate"},"timestamp":1770935766494,"sessionId":"debug-session","hypothesisId":"A"}
 {"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] mug"},"timestamp":1770935766495,"sessionId":"debug-session","hypothesisId":"A"}
 {"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Red tube"},"timestamp":1770935766498,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":true,"gameObjectName":" minerHelm"},"timestamp":1771351433624,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":true,"gameObjectName":" minerHelm"},"timestamp":1771351464837,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":true,"gameObjectName":" minerHelm"},"timestamp":1771351484769,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":true,"gameObjectName":" minerHelm"},"timestamp":1771351544470,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":true,"gameObjectName":" minerHelm"},"timestamp":1771351653125,"sessionId":"debug-session","hypothesisId":"A"}
