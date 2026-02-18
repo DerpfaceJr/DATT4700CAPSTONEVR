@@ -36,6 +36,21 @@ public class EnemySeekAndAttack : MonoBehaviour
     [Tooltip("Vertical offset from FloorRef (hips) down to feet. FloorRef is at hips, so we raise placement by this so feet touch the floor.")]
     public float floorRefToFeetOffset = 0.2f;
 
+    [Header("Attack")]
+    [Tooltip("Distance to player to trigger attack (stop and play Attack animation)")]
+    public float attackRange = 1.5f;
+    [Tooltip("Duration of attack animation (seconds)")]
+    public float attackDuration = 1.5f;
+    [Tooltip("Cooldown between attacks (seconds)")]
+    public float attackCooldown = 0.5f;
+    [Tooltip("Speed of stepping toward player during attack (helps trigger hitbox contact)")]
+    public float attackLungeSpeed = 1.2f;
+    [Tooltip("Max distance to lunge toward player during attack")]
+    public float attackLungeMaxDistance = 0.6f;
+
+    /// <summary>True while attack animation is playing. Health is only deducted when this is true and enemy touches player.</summary>
+    public bool IsAttacking { get; private set; }
+
     private Rigidbody rb;
     private NavMeshAgent navAgent;
     private bool isKinematic;
@@ -54,6 +69,11 @@ public class EnemySeekAndAttack : MonoBehaviour
     private const float WARP_RETRY_INTERVAL = 1f;
     private const float NAVMESH_SAMPLE_RADIUS = 5f;
 
+    private EnemyAnimatorController animController;
+    private float attackStartTime = -999f;
+    private float lastAttackEndTime = -999f;
+    private Vector3 attackStartPosition;
+
     /// <summary>Optional transform marking floor/feet (e.g. FloorRef). When set, NavMesh snap and grounding use this instead of root.</summary>
     private Transform floorRef;
 
@@ -65,6 +85,8 @@ public class EnemySeekAndAttack : MonoBehaviour
             isKinematic = rb.isKinematic;
         }
         CacheFloorRef();
+        animController = GetComponent<EnemyAnimatorController>();
+        if (animController == null) animController = GetComponentInChildren<EnemyAnimatorController>();
 
         if (useNavMesh)
         {
@@ -255,6 +277,76 @@ public class EnemySeekAndAttack : MonoBehaviour
         Vector3 toPlayerFlat = toPlayer;
         toPlayerFlat.y = 0f;
         float distanceFlat = toPlayerFlat.magnitude;
+
+        // Attack state: end attack when duration elapsed
+        if (IsAttacking)
+        {
+            if (Time.time - attackStartTime >= attackDuration)
+            {
+                IsAttacking = false;
+                lastAttackEndTime = Time.time;
+                if (animController != null) animController.SetAttackTrigger(false);
+            }
+            else
+            {
+                if (navAgent != null && navAgent.enabled) navAgent.speed = 0f;
+                if (toPlayerFlat.sqrMagnitude > 0.01f)
+                {
+                    transform.rotation = Quaternion.Euler(0f, Quaternion.LookRotation(toPlayerFlat).eulerAngles.y, 0f);
+                    Vector3 dir = toPlayerFlat.normalized;
+                    float distFromStart = Vector3.Distance(transform.position, attackStartPosition);
+                    float remainingLunge = Mathf.Max(0f, attackLungeMaxDistance - distFromStart);
+                    float distToPlayer = toPlayerFlat.magnitude;
+                    float moveDist = Mathf.Min(attackLungeSpeed * Time.fixedDeltaTime, remainingLunge, Mathf.Max(0f, distToPlayer - 0.15f));
+                    if (moveDist > 0.001f)
+                    {
+                        Vector3 newPos = transform.position + dir * moveDist;
+                        if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
+                        {
+                            NavMeshHit hit;
+                            if (NavMesh.SamplePosition(newPos, out hit, 2f, NavMesh.AllAreas))
+                            {
+                                Vector3 rootPos;
+                                if (floorRef != null)
+                                {
+                                    Vector3 feetLevel = hit.position + Vector3.up * floorRefToFeetOffset;
+                                    rootPos = feetLevel + (transform.position - floorRef.position);
+                                }
+                                else
+                                    rootPos = hit.position;
+                                navAgent.Warp(rootPos);
+                            }
+                        }
+                        else if (rb != null)
+                        {
+                            Vector3 newPosRb = transform.position + dir * moveDist;
+                            if (floorRef != null) SnapRootToGroundUsingFloorRef(ref newPosRb);
+                            rb.MovePosition(newPosRb);
+                        }
+                        else
+                        {
+                            transform.position = newPos;
+                        }
+                    }
+                }
+                ForceUpright();
+                return;
+            }
+        }
+
+        // Start attack when in range (and not on cooldown)
+        if (!IsAttacking && distanceFlat <= attackRange && Time.time - lastAttackEndTime >= attackCooldown)
+        {
+            IsAttacking = true;
+            attackStartTime = Time.time;
+            attackStartPosition = transform.position;
+            if (animController != null) animController.SetAttackTrigger(true);
+            if (navAgent != null && navAgent.enabled) navAgent.speed = 0f;
+            if (toPlayerFlat.sqrMagnitude > 0.01f)
+                transform.rotation = Quaternion.Euler(0f, Quaternion.LookRotation(toPlayerFlat).eulerAngles.y, 0f);
+            ForceUpright();
+            return;
+        }
 
         bool useDirectMovement = true;
         if (navAgent != null && navAgent.enabled && useNavMesh && navAgent.isOnNavMesh)

@@ -30,6 +30,7 @@ public class EnemyAnimatorController : MonoBehaviour
     public bool forceIdle = false;
     
     private int _speedHash;
+    private int _attackTriggerHash;
     
     void Start()
     {
@@ -47,6 +48,14 @@ public class EnemyAnimatorController : MonoBehaviour
             navAgent = GetComponent<NavMeshAgent>();
         
         _speedHash = Animator.StringToHash(speedParameterName);
+        _attackTriggerHash = Animator.StringToHash("AttackTrigger");
+    }
+    
+    /// <summary>Set AttackTrigger to play Attack animation. Called by EnemySeekAndAttack when in range. Uses Float 0/1 for compatibility.</summary>
+    public void SetAttackTrigger(bool value)
+    {
+        if (animator != null)
+            animator.SetFloat(_attackTriggerHash, value ? 1f : 0f);
     }
     
     void Update()

@@ -89,28 +89,33 @@ public class PlayerLoseOnEnemyTouch : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
-        if (IsEnemy(collision.gameObject))
-            TryDealTouchDamage();
+        GameObject enemyRoot = GetEnemyRoot(collision.gameObject);
+        if (enemyRoot != null)
+            TryDealTouchDamage(enemyRoot);
     }
 
     void OnTriggerEnter(Collider other)
     {
-        if (IsEnemy(other.gameObject))
-            TryDealTouchDamage();
+        GameObject enemyRoot = GetEnemyRoot(other.gameObject);
+        if (enemyRoot != null)
+            TryDealTouchDamage(enemyRoot);
     }
 
     void OnControllerColliderHit(ControllerColliderHit hit)
     {
         if (hit == null || hit.gameObject == null) return;
-        if (IsEnemy(hit.gameObject))
-            TryDealTouchDamage();
+        GameObject enemyRoot = GetEnemyRoot(hit.gameObject);
+        if (enemyRoot != null)
+            TryDealTouchDamage(enemyRoot);
     }
 
-    private void TryDealTouchDamage()
+    private void TryDealTouchDamage(GameObject enemyRoot)
     {
         if (playerHealth == null) return;
         if (playerHealth.IsInvulnerable()) return;
         if (Time.time - lastTouchTime < touchCooldown) return;
+        var seekAttack = enemyRoot.GetComponentInChildren<EnemySeekAndAttack>();
+        if (seekAttack != null && !seekAttack.IsAttacking) return;
         lastTouchTime = Time.time;
         playerHealth.TakeDamage(touchDamage);
         if (playerHealth != null && !playerHealth.IsAlive())
@@ -132,23 +137,29 @@ public class PlayerLoseOnEnemyTouch : MonoBehaviour
         foreach (Collider c in nearby)
         {
             if (c == null) continue;
-            if (!IsEnemy(c.gameObject)) continue;
+            GameObject enemyRoot = GetEnemyRoot(c.gameObject);
+            if (enemyRoot == null) continue;
             float verticalDiff = Mathf.Abs(c.transform.position.y - playerPos.y);
             if (verticalDiff > maxVerticalTouchDistance) continue;
-            TryDealTouchDamage();
+            TryDealTouchDamage(enemyRoot);
             return;
         }
     }
 
-    private bool IsEnemy(GameObject obj)
+    private GameObject GetEnemyRoot(GameObject obj)
     {
-        if (obj == null) return false;
+        if (obj == null) return null;
         Transform t = obj.transform;
         while (t != null)
         {
-            if (t.CompareTag(enemyTag)) return true;
+            if (t.CompareTag(enemyTag)) return t.gameObject;
             t = t.parent;
         }
-        return false;
+        return null;
+    }
+
+    private bool IsEnemy(GameObject obj)
+    {
+        return GetEnemyRoot(obj) != null;
     }
 }
