@@ -135,3 +135,39 @@
 {"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":true,"gameObjectName":" minerHelm"},"timestamp":1771351484769,"sessionId":"debug-session","hypothesisId":"A"}
 {"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":true,"gameObjectName":" minerHelm"},"timestamp":1771351544470,"sessionId":"debug-session","hypothesisId":"A"}
 {"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":true,"gameObjectName":" minerHelm"},"timestamp":1771351653125,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Green tube"},"timestamp":1771371010037,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] minerHelm"},"timestamp":1771371010040,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Blue tube"},"timestamp":1771371010041,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] apple"},"timestamp":1771371010042,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] mug"},"timestamp":1771371010043,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Crate"},"timestamp":1771371010043,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Red tube"},"timestamp":1771371010044,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Crowbar"},"timestamp":1771371010044,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Wooden Mallet"},"timestamp":1771371010045,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Pickaxe"},"timestamp":1771371010046,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Wrench"},"timestamp":1771371010076,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Sword"},"timestamp":1771371010077,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Green tube"},"timestamp":1771371080775,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] minerHelm"},"timestamp":1771371080779,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Blue tube"},"timestamp":1771371080780,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] apple"},"timestamp":1771371080781,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] mug"},"timestamp":1771371080781,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Crate"},"timestamp":1771371080782,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Red tube"},"timestamp":1771371080783,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Crowbar"},"timestamp":1771371080783,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Wooden Mallet"},"timestamp":1771371080784,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Pickaxe"},"timestamp":1771371080785,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Wrench"},"timestamp":1771371080818,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Sword"},"timestamp":1771371080818,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] minerHelm"},"timestamp":1771373591542,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Blue tube"},"timestamp":1771373591546,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Crate"},"timestamp":1771373591547,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Green tube"},"timestamp":1771373591547,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Red tube"},"timestamp":1771373591548,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] apple"},"timestamp":1771373591573,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] mug"},"timestamp":1771373591574,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Crowbar"},"timestamp":1771373591574,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Wooden Mallet"},"timestamp":1771373591574,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Pickaxe"},"timestamp":1771373591575,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Wrench"},"timestamp":1771373591603,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"TextControl.cs:Start","message":"Start","data":{"resultTextIsNull":false,"gameObjectName":"[BuildingBlock] Sword"},"timestamp":1771373591604,"sessionId":"debug-session","hypothesisId":"A"}
