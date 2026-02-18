@@ -52,6 +52,7 @@ public class RoundManager : MonoBehaviour
     private Vector3 lastRoundEndPlayerPosition;
     private bool isRoundActive = false;
     private bool gameOver = false;
+    private PlayerHealth cachedPlayerHealth;
     private int enemiesSpawnedThisRound = 0; // Track how many enemies were spawned in current round
     private bool waitingForCutscene = false; // Track if we're waiting for cutscene to finish
     
@@ -110,20 +111,20 @@ public class RoundManager : MonoBehaviour
             }
         }
         
-        PlayerHealth playerHealth = playerObject != null ? playerObject.GetComponent<PlayerHealth>() : null;
-        if (playerHealth == null)
+        cachedPlayerHealth = playerObject != null ? playerObject.GetComponent<PlayerHealth>() : null;
+        if (cachedPlayerHealth == null)
         {
             GameObject playerTagged = GameObject.FindGameObjectWithTag("Player");
             if (playerTagged != null)
-                playerHealth = playerTagged.GetComponent<PlayerHealth>() ?? playerTagged.GetComponentInChildren<PlayerHealth>();
+                cachedPlayerHealth = playerTagged.GetComponent<PlayerHealth>() ?? playerTagged.GetComponentInChildren<PlayerHealth>();
         }
-        if (playerHealth == null)
+        if (cachedPlayerHealth == null)
         {
-            playerHealth = FindObjectOfType<PlayerHealth>();
+            cachedPlayerHealth = FindObjectOfType<PlayerHealth>();
         }
-        if (playerHealth != null)
+        if (cachedPlayerHealth != null)
         {
-            playerHealth.onDeath.AddListener(HandlePlayerDeath);
+            cachedPlayerHealth.onDeath.AddListener(HandlePlayerDeath);
         }
         else if (debugMode)
         {
@@ -489,6 +490,14 @@ public class RoundManager : MonoBehaviour
         if (youLostPanel != null)
         {
             youLostPanel.SetActive(false);
+        }
+        
+        // Reset player health and health bar so the bar is full again after game over
+        if (cachedPlayerHealth != null)
+        {
+            cachedPlayerHealth.ResetHealth();
+            if (debugMode)
+                Debug.Log("RoundManager: Reset player health and health bar for new game.");
         }
         
         // Clear enemies
