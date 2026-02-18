@@ -32,6 +32,10 @@ public class EnemySeekAndAttack : MonoBehaviour
     [Tooltip("Padding from walls so enemies stay inside play area")]
     public float wallPadding = 1f;
 
+    [Header("Floor Positioning")]
+    [Tooltip("Vertical offset from FloorRef (hips) down to feet. FloorRef is at hips, so we raise placement by this so feet touch the floor.")]
+    public float floorRefToFeetOffset = 0.2f;
+
     private Rigidbody rb;
     private NavMeshAgent navAgent;
     private bool isKinematic;
@@ -131,7 +135,14 @@ public class EnemySeekAndAttack : MonoBehaviour
         NavMeshHit hit;
         if (NavMesh.SamplePosition(sampleAt, out hit, NAVMESH_SAMPLE_RADIUS, NavMesh.AllAreas))
         {
-            Vector3 rootPos = (floorRef != null) ? hit.position + (transform.position - floorRef.position) : hit.position;
+            Vector3 rootPos;
+            if (floorRef != null)
+            {
+                Vector3 feetLevel = hit.position + Vector3.up * floorRefToFeetOffset;
+                rootPos = feetLevel + (transform.position - floorRef.position);
+            }
+            else
+                rootPos = hit.position;
             navAgent.Warp(rootPos);
         }
         else
@@ -149,7 +160,8 @@ public class EnemySeekAndAttack : MonoBehaviour
         RaycastHit hit;
         if (Physics.Raycast(floorPos + Vector3.up * 0.5f, Vector3.down, out hit, 2f))
         {
-            rootPos = hit.point + offset;
+            Vector3 feetLevel = hit.point + Vector3.up * floorRefToFeetOffset;
+            rootPos = feetLevel + offset;
         }
     }
 
@@ -290,7 +302,14 @@ public class EnemySeekAndAttack : MonoBehaviour
                 NavMeshHit hit;
                 if (NavMesh.SamplePosition(sampleAt, out hit, NAVMESH_SAMPLE_RADIUS, NavMesh.AllAreas))
                 {
-                    Vector3 rootPos = (floorRef != null) ? hit.position + (transform.position - floorRef.position) : hit.position;
+                    Vector3 rootPos;
+                    if (floorRef != null)
+                    {
+                        Vector3 feetLevel = hit.position + Vector3.up * floorRefToFeetOffset;
+                        rootPos = feetLevel + (transform.position - floorRef.position);
+                    }
+                    else
+                        rootPos = hit.position;
                     navAgent.Warp(rootPos);
                 }
                 else

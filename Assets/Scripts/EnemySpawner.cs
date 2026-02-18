@@ -26,6 +26,10 @@ public class EnemySpawner : MonoBehaviour
     [Tooltip("Enemy scale - only used if prefab not assigned")]
     public Vector3 enemyScale = Vector3.one;
     
+    [Header("Floor Positioning")]
+    [Tooltip("Vertical offset from FloorRef (hips) down to feet. FloorRef is at hips, so we raise placement by this so feet touch the floor.")]
+    public float floorRefToFeetOffset = 0.2f;
+
     [Header("Spawn Settings")]
     [Tooltip("Spawn points (if empty, uses random positions)")]
     public Transform[] spawnPoints;
@@ -116,7 +120,10 @@ public class EnemySpawner : MonoBehaviour
         if (NavMesh.SamplePosition(pos, out hit, 5f, NavMesh.AllAreas))
         {
             if (floorRef != null)
-                enemy.transform.position = hit.position + (enemy.transform.position - floorRef.position);
+            {
+                Vector3 feetLevel = hit.position + Vector3.up * floorRefToFeetOffset;
+                enemy.transform.position = feetLevel + (enemy.transform.position - floorRef.position);
+            }
             else
                 enemy.transform.position = hit.position;
         }
@@ -270,6 +277,7 @@ public class EnemySpawner : MonoBehaviour
             seekAttack = enemy.AddComponent<EnemySeekAndAttack>();
         }
         seekAttack.moveSpeed = 3f;
+        seekAttack.floorRefToFeetOffset = floorRefToFeetOffset;
         seekAttack.enabled = !isFirstRound; // Only first round enemy stays still; round 2+ enemies move
         
         // Rigged: keep LegBonePositionFixer for proper leg positioning
