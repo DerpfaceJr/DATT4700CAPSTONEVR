@@ -1,0 +1,10 @@
+[NavMesh Check] NavMesh bounds: min=(-49.80, 0.02, -49.81), max=(49.85, 11.42, 49.84), vertexCount=51054
+[NavMesh Check] ON NavMesh: Map center (0,1,0) -> sampled to (0.44, 0.28, 0.08)
+[NavMesh Check] ON NavMesh: Terrain area (0,1,0) -> sampled to (0.44, 0.28, 0.08)
+[NavMesh Check] ON NavMesh: Floor Time Machine area (-10,1.5,7) -> sampled to (-10.00, 0.09, 7.00)
+[NavMesh Check] ON NavMesh: Apple Shelf area (-0.56,1.2,21.73) -> sampled to (-0.56, 0.02, 21.73)
+[NavMesh Check] ON NavMesh: Shelf rooftop estimate (-0.56,1.5,21.73) -> sampled to (-0.56, 0.02, 21.73)
+[NavMesh Check] ON NavMesh: Bridge area (0,1,0) -> sampled to (0.44, 0.28, 0.08)
+[NavMesh Check] NOT on NavMesh: Roof area (0,3,0)
+[NavMesh Check] ON NavMesh: High shelf (5,2,5) -> sampled to (5.00, 0.09, 5.00)
+[NavMesh Check] Summary: 7/8 test positions on NavMesh. Shelves/rooftops in bounds: True
