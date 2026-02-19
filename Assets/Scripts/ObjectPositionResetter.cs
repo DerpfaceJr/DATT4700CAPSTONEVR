@@ -222,6 +222,11 @@ public class ObjectPositionResetter : MonoBehaviour
                 continue;
             }
             
+            // Skip if player is holding this object (prevents player from floating/being yanked)
+            SwordPhysicsFix sword = obj.GetComponent<SwordPhysicsFix>();
+            if (sword != null && sword.isGrabbed)
+                continue;
+            
             // Reset position
             obj.transform.position = state.position;
             

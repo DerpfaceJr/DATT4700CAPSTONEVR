@@ -1,6 +1,10 @@
 using UnityEngine;
 using System.Collections;
 
+#if UNITY_EDITOR || UNITY_ANDROID
+using Oculus.Interaction;
+#endif
+
 public class MeleeDurability : MonoBehaviour
 {
     [Header("Durability")]
@@ -9,6 +13,8 @@ public class MeleeDurability : MonoBehaviour
 
     [Header("Respawn")]
     public float respawnDelay = 2f;
+    [Tooltip("Optional: use this transform's position/rotation for respawn (e.g. spawn point). If null, uses position at Start().")]
+    public Transform spawnPoint;
 
     [Header("Effects")]
     public ParticleSystem breakEffect;
@@ -22,8 +28,16 @@ public class MeleeDurability : MonoBehaviour
 
     void Start()
     {
-        startPosition = transform.position;
-        startRotation = transform.rotation;
+        if (spawnPoint != null)
+        {
+            startPosition = spawnPoint.position;
+            startRotation = spawnPoint.rotation;
+        }
+        else
+        {
+            startPosition = transform.position;
+            startRotation = transform.rotation;
+        }
         ResetWeapon();
     }
 
@@ -48,6 +62,10 @@ public class MeleeDurability : MonoBehaviour
 
     IEnumerator BreakAndRespawn()
     {
+        yield return null;
+        yield return new WaitForEndOfFrame();
+        if (this == null) yield break;
+
         // Spawn particle BEFORE disabling
         if (breakEffect != null)
         {
@@ -59,11 +77,25 @@ public class MeleeDurability : MonoBehaviour
             Destroy(fx.gameObject, 2f);
         }
 
+        // Force release if grabbed (prevents weapon snapping back to hand)
+#if UNITY_EDITOR || UNITY_ANDROID
+        if (meleeObj != null && meleeObj.isGrabbed)
+        {
+            var grabbable = meleeObj.GetComponent<Grabbable>();
+            if (grabbable != null)
+            {
+                grabbable.enabled = false;
+                grabbable.enabled = true;
+            }
+        }
+#endif
+
         // Disable weapon visuals + collider
         SetWeaponActive(false);
 
         yield return new WaitForSeconds(respawnDelay);
 
+        if (this == null) yield break;
         ResetWeapon();
     }
 
@@ -81,6 +113,16 @@ public class MeleeDurability : MonoBehaviour
         hitCount = 0;
         transform.position = startPosition;
         transform.rotation = startRotation;
+
+        Rigidbody rb = GetComponentInParent<Rigidbody>();
+        if (rb == null) rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.isKinematic = false;
+            Physics.SyncTransforms();
+        }
 
         SetWeaponActive(true);
 
