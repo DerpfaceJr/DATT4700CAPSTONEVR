@@ -31,6 +31,8 @@ public class EnemySpawner : MonoBehaviour
     public float floorRefToFeetOffset = 0.2f;
 
     [Header("Spawn Settings")]
+    [Tooltip("Enemy movement speed (units per second). Single parameter for all spawned enemies.")]
+    public float enemyMoveSpeed = 3f;
     [Tooltip("Spawn points (if empty, uses random positions)")]
     public Transform[] spawnPoints;
     
@@ -276,9 +278,9 @@ public class EnemySpawner : MonoBehaviour
         {
             seekAttack = enemy.AddComponent<EnemySeekAndAttack>();
         }
-        seekAttack.moveSpeed = 3f;
+        seekAttack.moveSpeed = enemyMoveSpeed;
         seekAttack.floorRefToFeetOffset = floorRefToFeetOffset;
-        seekAttack.enabled = !isFirstRound; // Only first round enemy stays still; round 2+ enemies move
+        seekAttack.enabled = true; // All enemies move (including first round)
         
         // Rigged: keep LegBonePositionFixer for proper leg positioning
         if (hasRiggedCharacter)
