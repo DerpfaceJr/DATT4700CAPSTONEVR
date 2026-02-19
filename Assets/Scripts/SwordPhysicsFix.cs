@@ -9,6 +9,7 @@ public class SwordPhysicsFix : MonoBehaviour
     private Rigidbody rb;
     private Grabbable grabbable;
     private bool wasGrabbed;
+    public bool isGrabbed;
 
     [Header("Blade Colliders (Triggers when held)")]
     [Tooltip("ONLY colliders in this list will be triggers when the sword is held")]
@@ -30,7 +31,7 @@ public class SwordPhysicsFix : MonoBehaviour
     {
         if (grabbable == null) return;
 
-        bool isGrabbed = grabbable.Points.Count > 0;
+        isGrabbed = grabbable.Points.Count > 0;
 
         if (isGrabbed && !wasGrabbed)
         {
