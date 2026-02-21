@@ -408,24 +408,24 @@ public class EnemySpawner : MonoBehaviour
             enemyHeightOffset = enemyScale.y * 0.5f;
         }
         
-        // Use raycast to find actual ground surface
+        // Use RaycastAll and pick lowest hit (floor) - avoids hitting roof first in indoor scenes
         float y = groundLevel + enemyHeightOffset; // Default fallback
-        RaycastHit hit;
-        Vector3 rayStart = new Vector3(x, 10f, z); // Start raycast from above
+        Vector3 rayStart = new Vector3(x, 10f, z);
         
-        if (Physics.Raycast(rayStart, Vector3.down, out hit, 20f))
+        RaycastHit[] hits = Physics.RaycastAll(rayStart, Vector3.down, 20f);
+        if (hits.Length > 0)
         {
-            // Found ground - spawn enemy on the surface
-            // For rigged characters, use a small fixed offset to prevent visual pop
-            // (rigged characters have their pivot at hips, not feet)
+            // Pick the lowest hit point (floor is below roof)
+            RaycastHit lowestHit = hits[0];
+            for (int i = 1; i < hits.Length; i++)
+            {
+                if (hits[i].point.y < lowestHit.point.y)
+                    lowestHit = hits[i];
+            }
             if (isRigged)
-            {
-                y = hit.point.y + 0.05f; // Small offset for rigged characters
-            }
+                y = lowestHit.point.y + 0.05f;
             else
-            {
-                y = hit.point.y + enemyHeightOffset;
-            }
+                y = lowestHit.point.y + enemyHeightOffset;
         }
         else
         {

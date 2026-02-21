@@ -46,6 +46,14 @@ public class RoundManager : MonoBehaviour
     public AudioClip enemyDeathClip;
     [Tooltip("Sound played when you finish a round (round 2+). Assign Win clip (e.g. Assets/Audio/Win.mp3).")]
     public AudioClip winClip;
+    [Header("BGM")]
+    [Tooltip("Background music when game scene (SimpleArea) is loaded. Assign InGameBGM.mp3. Uses its own AudioSource.")]
+    public AudioClip bgmClip;
+    [Tooltip("Optional AudioSource for BGM. If not set, one is added to this GameObject at runtime.")]
+    public AudioSource bgmAudioSource;
+    [Tooltip("BGM volume (0-1).")]
+    [Range(0f, 1f)]
+    public float bgmVolume = 0.5f;
     
     private List<GameObject> currentEnemies = new List<GameObject>();
     private Dictionary<GameObject, int> enemyRoundAssignments = new Dictionary<GameObject, int>();
@@ -140,6 +148,21 @@ public class RoundManager : MonoBehaviour
                 if (sfxAudioSource != null && debugMode)
                     Debug.Log("RoundManager: Using AudioSource from AudioManager for SFX.");
             }
+        }
+        
+        // Start in-game BGM when scene (SimpleArea) is loaded
+        if (bgmClip != null)
+        {
+            if (bgmAudioSource == null)
+                bgmAudioSource = GetComponent<AudioSource>();
+            if (bgmAudioSource == null)
+                bgmAudioSource = gameObject.AddComponent<AudioSource>();
+            bgmAudioSource.clip = bgmClip;
+            bgmAudioSource.loop = true;
+            bgmAudioSource.volume = bgmVolume;
+            bgmAudioSource.spatialBlend = 0f;
+            bgmAudioSource.playOnAwake = false;
+            bgmAudioSource.Play();
         }
         
         // Start first round
