@@ -113,7 +113,9 @@ public class EnemySpawner : MonoBehaviour
         Transform floorRef = FindFloorRef(enemy.transform);
         Vector3 pos = (floorRef != null) ? floorRef.position : enemy.transform.position;
         NavMeshHit hit;
-        if (NavMesh.SamplePosition(pos, out hit, 5f, NavMesh.AllAreas))
+        int walkableArea = NavMesh.GetAreaFromName("Walkable");
+        int areaMask = (walkableArea >= 0) ? (1 << walkableArea) : NavMesh.AllAreas;
+        if (NavMesh.SamplePosition(pos, out hit, 5f, areaMask))
         {
             if (floorRef != null)
             {

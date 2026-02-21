@@ -83,6 +83,35 @@ public static class NavMeshCheckEditor
 
             int floorCount = 6, roofCount = 2;
             sb.AppendLine($"[NavMesh Check] Summary: Floors+Bridge covered={floorOk}/{floorCount}, Above-roof excluded={roofOk}/{roofCount}, Total on NavMesh={onNavMesh}/{testPositions.Length}");
+
+            // Check locker tops
+            sb.AppendLine("");
+            sb.AppendLine("[NavMesh Check] --- Locker Tops ---");
+            var lockers = GameObject.FindObjectsOfType<Transform>(true);
+            int lockerOnCount = 0, lockerTotal = 0;
+            foreach (var t in lockers)
+            {
+                if (t == null || !t.name.ToLowerInvariant().Contains("locker")) continue;
+                Renderer r = t.GetComponent<Renderer>();
+                if (r == null) r = t.GetComponentInChildren<Renderer>();
+                if (r == null) continue;
+                Bounds b = r.bounds;
+                Vector3 topCenter = new Vector3(b.center.x, b.max.y, b.center.z);
+                bool lockerHit = NavMesh.SamplePosition(topCenter, out NavMeshHit lockerHitInfo, 2f, NavMesh.AllAreas);
+                lockerTotal++;
+                if (lockerHit)
+                {
+                    float sampledY = lockerHitInfo.position.y;
+                    bool onLockerTop = Mathf.Abs(sampledY - topCenter.y) < 0.3f;
+                    if (onLockerTop) lockerOnCount++;
+                    sb.AppendLine($"[NavMesh Check] Locker top {t.name} ({topCenter.x:F2},{topCenter.y:F2},{topCenter.z:F2}) -> sampled ({lockerHitInfo.position.x:F2},{lockerHitInfo.position.y:F2},{lockerHitInfo.position.z:F2}) {(onLockerTop ? "ON LOCKER TOP" : "on floor below")}");
+                }
+                else
+                {
+                    sb.AppendLine($"[NavMesh Check] Locker top {t.name} ({topCenter.x:F2},{topCenter.y:F2},{topCenter.z:F2}) -> NOT on NavMesh");
+                }
+            }
+            sb.AppendLine($"[NavMesh Check] Locker tops summary: {lockerOnCount}/{lockerTotal} on NavMesh (top surface)");
         }
         catch (System.Exception e)
         {

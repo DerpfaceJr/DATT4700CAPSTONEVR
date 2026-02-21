@@ -1,4 +1,4 @@
-[NavMesh Check] NavMesh bounds: min=(-49.82, 0.02, -49.81), max=(49.83, 8.79, 49.84), vertexCount=47805
+[NavMesh Check] NavMesh bounds: min=(-49.82, 0.02, -49.81), max=(49.83, 8.79, 49.84), vertexCount=47643
 [NavMesh Check] OK ON: First floor center (0,0.5,0) -> (0.30, 0.20, 0.11)
 [NavMesh Check] OK ON: First floor (-5,0.5,5) -> (-5.00, 0.02, 5.00)
 [NavMesh Check] MISSING NOT: Bridge/second floor (0,6,0)
@@ -8,3 +8,62 @@
 [NavMesh Check] OK NOT: Above NavMesh roof (0,12,0)
 [NavMesh Check] OK NOT: Above NavMesh (0,15,0)
 [NavMesh Check] Summary: Floors+Bridge covered=4/6, Above-roof excluded=2/2, Total on NavMesh=4/8
+
+[NavMesh Check] --- Locker Tops ---
+[NavMesh Check] Locker top locker (22.31,2.40,-1.72) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (5.03,2.71,-8.12) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (3.41,2.61,6.30) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (7.69,2.71,4.02) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (4.11,2.61,5.60) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (8.37,2.71,3.30) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (6.44,2.71,-6.70) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (7.84,2.71,-5.30) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (6.27,2.71,5.41) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (22.31,2.40,-0.75) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (6.22,2.61,3.49) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (6.98,2.81,-3.61) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (5.73,2.71,-7.41) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (5.55,2.71,6.15) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (5.58,2.81,-5.03) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (6.31,2.81,-4.33) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (7.14,2.71,-6.00) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (22.34,2.39,-2.68) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (7.70,2.81,-2.91) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (6.97,2.71,4.69) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (5.52,2.61,4.19) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (8.41,2.81,-2.21) -> NOT on NavMesh
+[NavMesh Check] Locker top locker (4.82,2.61,4.89) -> NOT on NavMesh
+[NavMesh Check] Locker top Equipment Locker_A (1) (7.51,2.63,-4.97) -> NOT on NavMesh
+[NavMesh Check] Locker top Equipment Lockers2 (1) (6.01,2.50,6.40) -> NOT on NavMesh
+[NavMesh Check] Locker top Equipment Lockers (1) (4.21,2.50,4.70) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (1) (5.15,2.53,5.22) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (2) (5.40,2.63,-7.07) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (2) (7.31,2.63,5.02) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (21.87,2.33,-0.75) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-open (1) (6.22,2.63,-5.73) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (1) (6.11,2.63,-6.37) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-open (1) (8.65,2.63,4.21) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (4) (8.75,2.73,-2.55) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (1) (6.65,2.73,-4.67) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-open (1) (21.57,2.32,-3.09) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (2) (7.32,2.73,-3.95) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (7.51,2.63,-4.97) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (6.55,2.53,3.82) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (3) (8.04,2.73,-3.25) -> NOT on NavMesh
+[NavMesh Check] Locker top Equipment Lockers (3.72,2.50,-4.35) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (3) (3.74,2.53,6.64) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (3) (4.69,2.63,-7.78) -> NOT on NavMesh
+[NavMesh Check] Locker top Equipment Lockers2 (5.61,2.50,-5.72) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (4) (5.89,2.63,6.48) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (1) (21.87,2.33,-1.72) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-open (1) (5.80,2.53,5.11) -> NOT on NavMesh
+[NavMesh Check] Locker top Equipment Locker_A (2) (8.65,2.63,4.21) -> NOT on NavMesh
+[NavMesh Check] Locker top Lockers (7.51,2.63,-4.97) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (5.92,2.73,-5.37) -> NOT on NavMesh
+[NavMesh Check] Locker top Equipment Locker_A (1) (5.92,2.73,-5.37) -> NOT on NavMesh
+[NavMesh Check] Locker top Equipment Locker_A (2) (6.55,2.53,3.82) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (1) (8.03,2.63,4.35) -> NOT on NavMesh
+[NavMesh Check] Locker top Lockers New (5.92,2.73,-5.37) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (2) (4.45,2.53,5.93) -> NOT on NavMesh
+[NavMesh Check] Locker top locker-closed (3) (6.61,2.63,5.74) -> NOT on NavMesh
+[NavMesh Check] Locker tops summary: 0/56 on NavMesh (top surface)
