@@ -274,7 +274,7 @@ public class RoundManager : MonoBehaviour
                 if (isFirstRoundSlot)
                 {
                     // Round 1: use spawner's default position (e.g. random within bounds)
-                    spawnPosition = enemySpawner.GetSpawnPositionForIndex(currentEnemies.Count, isRigged: !isFirstRoundSlot && enemySpawner.riggedEnemyPrefab != null);
+                    spawnPosition = enemySpawner.GetSpawnPositionForIndex(currentEnemies.Count, isRigged: enemySpawner.enemyPrefab != null);
                 }
                 else
                 {
@@ -288,8 +288,7 @@ public class RoundManager : MonoBehaviour
                 int enemyIndex = currentEnemies.Count;
                 GameObject newEnemy = enemySpawner.SpawnSingleEnemyAt(
                     enemyIndex,
-                    spawnPosition,
-                    isFirstRoundSlot
+                    spawnPosition
                 );
                 
                 if (newEnemy != null)

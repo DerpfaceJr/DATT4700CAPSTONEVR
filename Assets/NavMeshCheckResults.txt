@@ -1,10 +1,10 @@
-[NavMesh Check] NavMesh bounds: min=(-49.80, 0.02, -49.81), max=(49.85, 8.79, 49.84), vertexCount=50008
-[NavMesh Check] OK ON: First floor center (0,0.5,0) -> (0.32, 0.19, 0.00)
-[NavMesh Check] OK ON: First floor (-5,0.5,5) -> (-5.00, 0.09, 5.00)
-[NavMesh Check] OK ON: Bridge/second floor (0,6,0) -> (-0.50, 6.79, -1.06)
-[NavMesh Check] OK ON: Bridge elevated (-1,7,0) -> (-0.95, 7.12, -0.66)
-[NavMesh Check] OK ON: Floor Time Machine (-10,1,7) -> (-10.00, 0.09, 7.00)
-[NavMesh Check] OK ON: Bridge area (0,1,0) -> (0.44, 0.28, 0.08)
+[NavMesh Check] NavMesh bounds: min=(-49.82, 0.02, -49.81), max=(49.83, 8.79, 49.84), vertexCount=47805
+[NavMesh Check] OK ON: First floor center (0,0.5,0) -> (0.30, 0.20, 0.11)
+[NavMesh Check] OK ON: First floor (-5,0.5,5) -> (-5.00, 0.02, 5.00)
+[NavMesh Check] MISSING NOT: Bridge/second floor (0,6,0)
+[NavMesh Check] MISSING NOT: Bridge elevated (-1,7,0)
+[NavMesh Check] OK ON: Floor Time Machine (-10,1,7) -> (-10.00, 0.02, 7.00)
+[NavMesh Check] OK ON: Bridge area (0,1,0) -> (0.38, 0.24, 0.04)
 [NavMesh Check] OK NOT: Above NavMesh roof (0,12,0)
 [NavMesh Check] OK NOT: Above NavMesh (0,15,0)
-[NavMesh Check] Summary: Floors+Bridge covered=6/6, Above-roof excluded=2/2, Total on NavMesh=6/8
+[NavMesh Check] Summary: Floors+Bridge covered=4/6, Above-roof excluded=2/2, Total on NavMesh=4/8

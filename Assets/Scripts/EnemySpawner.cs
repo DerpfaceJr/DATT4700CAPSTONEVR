@@ -10,11 +10,8 @@ using System.Collections.Generic;
 public class EnemySpawner : MonoBehaviour
 {
     [Header("Enemy Prefab Settings")]
-    [Tooltip("Basic enemy prefab for static enemies (Round 1) - simple cube/mesh")]
+    [Tooltip("Enemy prefab used for all rounds (rigged character with Animator)")]
     public GameObject enemyPrefab;
-    
-    [Tooltip("Rigged character prefab for round 2+ enemies - must have IKTargetFollowVRRig")]
-    public GameObject riggedEnemyPrefab;
     
     [Header("Projectile Settings")]
     [Tooltip("Enemy Ball prefab for enemy ranged attacks")]
@@ -65,9 +62,9 @@ public class EnemySpawner : MonoBehaviour
     /// <summary>
     /// Spawn a single enemy at the given world position (used by RoundManager).
     /// </summary>
-    public GameObject SpawnSingleEnemyAt(int enemyIndex, Vector3 worldPosition, bool isFirstRound)
+    public GameObject SpawnSingleEnemyAt(int enemyIndex, Vector3 worldPosition)
     {
-        GameObject enemy = CreateEnemyAt(enemyIndex, worldPosition, isFirstRound);
+        GameObject enemy = CreateEnemyAt(enemyIndex, worldPosition);
         if (enemy != null)
         {
             activeEnemies.Add(enemy);
@@ -86,15 +83,12 @@ public class EnemySpawner : MonoBehaviour
     /// <summary>
     /// Create a single enemy GameObject at the given position
     /// </summary>
-    private GameObject CreateEnemyAt(int index, Vector3 worldPosition, bool isFirstRound)
+    private GameObject CreateEnemyAt(int index, Vector3 worldPosition)
     {
         GameObject enemy;
-        bool useBasicPrefab = isFirstRound && index == 0;
-        GameObject prefabToUse = useBasicPrefab ? enemyPrefab : (riggedEnemyPrefab != null ? riggedEnemyPrefab : enemyPrefab);
-        
-        if (prefabToUse != null)
+        if (enemyPrefab != null)
         {
-            enemy = Instantiate(prefabToUse);
+            enemy = Instantiate(enemyPrefab);
             enemy.name = $"Enemy_Round{index + 1}";
         }
         else
@@ -103,7 +97,7 @@ public class EnemySpawner : MonoBehaviour
             enemy.name = $"Enemy_Round{index + 1}";
         }
         
-        EnsureEnemyComponents(enemy, index, isFirstRound);
+        EnsureEnemyComponents(enemy);
         enemy.tag = "Enemy"; // Required for PlayerLoseOnEnemyTouch and other systems
         enemy.transform.position = worldPosition;
         SnapEnemyToNavMesh(enemy);
@@ -180,15 +174,9 @@ public class EnemySpawner : MonoBehaviour
     /// <summary>
     /// Ensure enemy has all required components
     /// </summary>
-    private void EnsureEnemyComponents(GameObject enemy, int index, bool isFirstRound)
+    private void EnsureEnemyComponents(GameObject enemy)
     {
-        IKTargetFollowVRRig enemyIKRig = enemy.GetComponent<IKTargetFollowVRRig>();
-        if (enemyIKRig == null)
-        {
-            enemyIKRig = enemy.GetComponentInChildren<IKTargetFollowVRRig>();
-        }
-
-        bool hasRiggedCharacter = enemyIKRig != null;
+        bool hasRiggedCharacter = enemy.GetComponentInChildren<Animator>() != null;
 
         Rigidbody rb = enemy.GetComponent<Rigidbody>();
         if (rb == null)
@@ -272,7 +260,7 @@ public class EnemySpawner : MonoBehaviour
             combatSystem.instakillMinVelocity = 1.5f; // Prevent death from touching static objects
         }
         
-        // Add seek-and-attack behaviour for all enemies (first round enemy does not move)
+        // Add seek-and-attack behaviour for all enemies
         EnemySeekAndAttack seekAttack = enemy.GetComponent<EnemySeekAndAttack>();
         if (seekAttack == null)
         {

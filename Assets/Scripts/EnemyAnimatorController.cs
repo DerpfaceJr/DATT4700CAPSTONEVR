@@ -26,9 +26,6 @@ public class EnemyAnimatorController : MonoBehaviour
     [Tooltip("Velocity magnitude below this = idle")]
     public float idleThreshold = 0.1f;
     
-    [Tooltip("When true, always stay in Idle (Speed=0). Used for Round 1 static enemy.")]
-    public bool forceIdle = false;
-    
     private int _speedHash;
     private int _attackTriggerHash;
     
@@ -63,7 +60,7 @@ public class EnemyAnimatorController : MonoBehaviour
         if (animator == null) return;
         
         float speed = 0f;
-        if (!forceIdle && navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
+        if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
         {
             Vector3 vel = navAgent.velocity;
             vel.y = 0f;
