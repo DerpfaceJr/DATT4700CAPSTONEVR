@@ -1,25 +1,37 @@
 using UnityEngine;
 using UnityEngine.AI;
+using Unity.AI.Navigation;
+using System.Collections.Generic;
 
 public class MiniMap : MonoBehaviour
 {
-    [SerializeField]
-    MeshFilter filter;
+    [SerializeField] MeshFilter filter;
+    [SerializeField] NavMeshSurface targetSurface;
+    [SerializeField] NavMeshSurface[] otherSurfaces;
+
     void Awake()
     {
         Bake();
     }
 
-    [ContextMenu("Bake Mesh")]
     void Bake()
     {
-        // Getnavmesh data
-        NavMeshTriangulation triangles = NavMesh.CalculateTriangulation();
-        // Create new mesh with data
+        // Remove other NavMeshes
+        foreach (var s in otherSurfaces)
+            s.RemoveData();
+
+        // Triangulate ONLY the target surface
+        NavMeshTriangulation triangulation = NavMesh.CalculateTriangulation();
+
         Mesh mesh = new Mesh();
-        mesh.vertices = triangles.vertices;
-        mesh.triangles = triangles.indices;
-        // set to mesh filter      
+        mesh.vertices = triangulation.vertices;
+        mesh.triangles = triangulation.indices;
+        mesh.RecalculateNormals();
+
         filter.mesh = mesh;
+
+        // Restore other NavMeshes
+        foreach (var s in otherSurfaces)
+            s.AddData();
     }
 }
