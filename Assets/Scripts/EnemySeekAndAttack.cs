@@ -35,6 +35,8 @@ public class EnemySeekAndAttack : MonoBehaviour
     [Header("Floor Positioning")]
     [Tooltip("Vertical offset from FloorRef (hips) down to feet. FloorRef is at hips, so we raise placement by this so feet touch the floor.")]
     public float floorRefToFeetOffset = 0.2f;
+    [Tooltip("NavMeshAgent base offset (lifts agent above NavMesh to clear steps). Increase if enemies get stuck on floor edges.")]
+    public float navAgentBaseOffset = 0.2f;
 
     [Header("Attack")]
     [Tooltip("Distance to player to trigger attack (stop and play Attack animation)")]
@@ -106,6 +108,7 @@ public class EnemySeekAndAttack : MonoBehaviour
                 navAgent.updateRotation = false; // We control rotation so enemy stays upright (Y-only)
                 navAgent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
                 navAgent.areaMask = -1;
+                navAgent.baseOffset = navAgentBaseOffset;
                 if (rb != null)
                 {
                     rb.isKinematic = true; // Let NavMeshAgent control position so enemy doesn't fall
