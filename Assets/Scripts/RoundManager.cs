@@ -306,6 +306,9 @@ public class RoundManager : MonoBehaviour
             Debug.Log($"Round {currentRound}: Existing enemy slots: [{existingSlotsStr}], Target slots: 1-{targetEnemyCount}");
         }
         
+        // Determine if this is a mini-boss round (every 5 rounds)
+        bool isMiniBossRound = (currentRound % 5 == 0) && currentRound > 0;
+
         // Spawn enemies for missing slots
         if (enemySpawner != null)
         {
@@ -321,12 +324,10 @@ public class RoundManager : MonoBehaviour
                 Vector3 spawnPosition;
                 if (isFirstRoundSlot)
                 {
-                    // Round 1: use spawner's default position (e.g. random within bounds)
                     spawnPosition = enemySpawner.GetSpawnPositionForIndex(currentEnemies.Count, isRigged: enemySpawner.enemyPrefab != null);
                 }
                 else
                 {
-                    // Round 2+: spawn at player's last round-end position (with offset), clamped to map
                     float pad = (playerRespawner != null) ? playerRespawner.wallPadding : 1f;
                     spawnPosition = lastRoundEndPlayerPosition + new Vector3(spawnOffsetFromPlayer, 0f, spawnOffsetFromPlayer);
                     spawnPosition.y = lastRoundEndPlayerPosition.y;
@@ -334,10 +335,19 @@ public class RoundManager : MonoBehaviour
                 }
                 
                 int enemyIndex = currentEnemies.Count;
-                GameObject newEnemy = enemySpawner.SpawnSingleEnemyAt(
-                    enemyIndex,
-                    spawnPosition
-                );
+                GameObject newEnemy;
+
+                // On mini-boss rounds, the newly spawned enemy for the current round slot is a mini-boss
+                if (isMiniBossRound && roundSlot == currentRound)
+                {
+                    newEnemy = enemySpawner.SpawnMiniBossAt(enemyIndex, spawnPosition);
+                    if (debugMode)
+                        Debug.Log($"*** MINI-BOSS ROUND {currentRound}! Spawning boss at slot {roundSlot} ***");
+                }
+                else
+                {
+                    newEnemy = enemySpawner.SpawnSingleEnemyAt(enemyIndex, spawnPosition);
+                }
                 
                 if (newEnemy != null)
                 {
@@ -352,7 +362,8 @@ public class RoundManager : MonoBehaviour
                     
                     if (debugMode)
                     {
-                        Debug.Log($"Spawned enemy for slot {roundSlot} at {spawnPosition}. Total enemies: {currentEnemies.Count}");
+                        string type = (isMiniBossRound && roundSlot == currentRound) ? "MINI-BOSS" : "enemy";
+                        Debug.Log($"Spawned {type} for slot {roundSlot} at {spawnPosition}. Total enemies: {currentEnemies.Count}");
                     }
                     
                     enemiesSpawnedThisRound++;

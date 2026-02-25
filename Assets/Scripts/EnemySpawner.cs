@@ -12,7 +12,20 @@ public class EnemySpawner : MonoBehaviour
     [Header("Enemy Prefab Settings")]
     [Tooltip("Enemy prefab used for all rounds (rigged character with Animator)")]
     public GameObject enemyPrefab;
-    
+
+    [Tooltip("Enemy Variant prefab used as mini-boss every 5 rounds. If null, uses normal prefab with boosted stats.")]
+    public GameObject enemyVariantPrefab;
+
+    [Header("Mini-Boss Settings")]
+    [Tooltip("HP multiplier for mini-boss enemies")]
+    public float miniBossHealthMultiplier = 3f;
+    [Tooltip("Speed multiplier for mini-boss enemies")]
+    public float miniBossSpeedMultiplier = 0.8f;
+    [Tooltip("Scale multiplier for mini-boss enemies (visual intimidation)")]
+    public float miniBossScaleMultiplier = 1.3f;
+    [Tooltip("Attack damage multiplier for mini-boss")]
+    public float miniBossDamageMultiplier = 2f;
+
     [Header("Projectile Settings")]
     [Tooltip("Enemy Ball prefab for enemy ranged attacks")]
     public GameObject enemyBallPrefab;
@@ -70,6 +83,93 @@ public class EnemySpawner : MonoBehaviour
             activeEnemies.Add(enemy);
         }
         return enemy;
+    }
+
+    /// <summary>
+    /// Spawn a mini-boss enemy at the given position. Uses Enemy Variant prefab if available.
+    /// </summary>
+    public GameObject SpawnMiniBossAt(int enemyIndex, Vector3 worldPosition)
+    {
+        GameObject boss = CreateMiniBossAt(enemyIndex, worldPosition);
+        if (boss != null)
+        {
+            activeEnemies.Add(boss);
+        }
+        return boss;
+    }
+
+    /// <summary>
+    /// Create a mini-boss enemy with boosted stats.
+    /// </summary>
+    private GameObject CreateMiniBossAt(int index, Vector3 worldPosition)
+    {
+        GameObject boss;
+        GameObject prefabToUse = enemyVariantPrefab != null ? enemyVariantPrefab : enemyPrefab;
+
+        if (prefabToUse != null)
+        {
+            boss = Instantiate(prefabToUse);
+            boss.name = $"MiniBoss_Round{index + 1}";
+        }
+        else
+        {
+            boss = CreateEnemyProcedurally();
+            boss.name = $"MiniBoss_Round{index + 1}";
+        }
+
+        EnsureEnemyComponents(boss);
+        boss.tag = "Enemy";
+        boss.transform.position = worldPosition;
+
+        // Apply mini-boss stat boosts
+        EnemyController controller = boss.GetComponent<EnemyController>();
+        if (controller != null)
+        {
+            controller.maxHealth *= miniBossHealthMultiplier;
+            controller.currentHealth = controller.maxHealth;
+        }
+
+        EnemySeekAndAttack seekAttack = boss.GetComponent<EnemySeekAndAttack>();
+        if (seekAttack != null)
+        {
+            seekAttack.moveSpeed = enemyMoveSpeed * miniBossSpeedMultiplier;
+            seekAttack.attackRange *= 1.2f;
+            seekAttack.attackDuration *= 0.8f;
+        }
+
+        // Scale up for visual intimidation
+        boss.transform.localScale *= miniBossScaleMultiplier;
+
+        // Disable instakill on mini-boss so it takes multiple hits
+        CombatSystem cs = boss.GetComponent<CombatSystem>();
+        if (cs != null)
+        {
+            cs.instakillEnabled = false;
+            cs.damageMultiplier = 1f;
+        }
+
+        // Add mini-boss marker component
+        MiniBossMarker marker = boss.AddComponent<MiniBossMarker>();
+        marker.damageMultiplier = miniBossDamageMultiplier;
+
+        // Adjust health bar for mini-boss
+        EnemyHealthBar hpBar = boss.GetComponent<EnemyHealthBar>();
+        if (hpBar != null)
+        {
+            hpBar.healthBarColor = new Color(0.8f, 0.1f, 0.8f, 1f); // Purple for mini-boss
+            hpBar.barWidth = 1.2f;
+            hpBar.hideAtFullHealth = false;
+        }
+
+        SnapEnemyToNavMesh(boss);
+
+        // Play mini-boss spawn sound
+        SoundManager sm = SoundManager.Instance;
+        if (sm != null)
+            sm.PlayMiniBossSpawn();
+
+        Debug.Log($"[EnemySpawner] MINI-BOSS spawned! HP={controller?.maxHealth}, Scale={boss.transform.localScale}");
+        return boss;
     }
     
     /// <summary>

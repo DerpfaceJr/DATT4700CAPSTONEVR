@@ -37,6 +37,12 @@ public class MeleeDurability : MonoBehaviour
 
     void Start()
     {
+        // Auto-find SwordPhysicsFix if not assigned
+        if (meleeObj == null)
+            meleeObj = GetComponent<SwordPhysicsFix>();
+        if (meleeObj == null)
+            meleeObj = GetComponentInParent<SwordPhysicsFix>();
+
         if (weaponIcon != null)
         {
             weaponIcon.sprite = weaponUISprite;
