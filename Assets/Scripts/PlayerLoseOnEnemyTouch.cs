@@ -117,7 +117,13 @@ public class PlayerLoseOnEnemyTouch : MonoBehaviour
         var seekAttack = enemyRoot.GetComponentInChildren<EnemySeekAndAttack>();
         if (seekAttack != null && !seekAttack.IsAttacking) return;
         lastTouchTime = Time.time;
-        playerHealth.TakeDamage(touchDamage);
+
+        float damage = touchDamage;
+        MiniBossMarker boss = enemyRoot.GetComponent<MiniBossMarker>();
+        if (boss != null)
+            damage *= boss.damageMultiplier;
+
+        playerHealth.TakeDamage(damage);
         if (playerHealth != null && !playerHealth.IsAlive())
             EnsureLosePanelShown();
     }
