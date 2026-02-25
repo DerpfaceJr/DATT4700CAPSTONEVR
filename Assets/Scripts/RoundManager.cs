@@ -61,8 +61,10 @@ public class RoundManager : MonoBehaviour
     private bool isRoundActive = false;
     private bool gameOver = false;
     private PlayerHealth cachedPlayerHealth;
-    private int enemiesSpawnedThisRound = 0; // Track how many enemies were spawned in current round
-    private bool waitingForCutscene = false; // Track if we're waiting for cutscene to finish
+    private int enemiesSpawnedThisRound = 0;
+    private bool waitingForCutscene = false;
+    private HighScoreManager highScoreManager;
+    private SoundManager soundManager;
     
     // Events
     public event Action<int> OnRoundStart;
@@ -150,8 +152,15 @@ public class RoundManager : MonoBehaviour
             }
         }
         
-        // Start in-game BGM when scene (SimpleArea) is loaded
-        if (bgmClip != null)
+        // Start in-game BGM: prefer SoundManager, fallback to local AudioSource
+        if (soundManager != null)
+        {
+            if (bgmClip != null)
+                soundManager.PlayBGM(bgmClip);
+            else
+                soundManager.PlayBGM();
+        }
+        else if (bgmClip != null)
         {
             if (bgmAudioSource == null)
                 bgmAudioSource = GetComponent<AudioSource>();
@@ -165,6 +174,22 @@ public class RoundManager : MonoBehaviour
             bgmAudioSource.Play();
         }
         
+        // Initialize sound manager
+        soundManager = SoundManager.Instance;
+        if (soundManager == null)
+            soundManager = FindObjectOfType<SoundManager>();
+
+        // Initialize high score tracking
+        highScoreManager = HighScoreManager.Instance;
+        if (highScoreManager == null)
+            highScoreManager = FindObjectOfType<HighScoreManager>();
+        if (highScoreManager == null)
+        {
+            GameObject hsmObj = new GameObject("HighScoreManager");
+            highScoreManager = hsmObj.AddComponent<HighScoreManager>();
+        }
+        highScoreManager.ResetCurrentRun();
+
         // Start first round
         StartRound(1);
     }
@@ -344,6 +369,10 @@ public class RoundManager : MonoBehaviour
             }
         }
         
+        // Notify high score manager of round start
+        if (highScoreManager != null)
+            highScoreManager.OnRoundStarted(currentRound, currentEnemies.Count);
+
         // Trigger round start event
         OnRoundStart?.Invoke(currentRound);
     }
@@ -353,10 +382,16 @@ public class RoundManager : MonoBehaviour
     /// </summary>
     private void OnEnemyDefeated(EnemyController enemy)
     {
-        // Play death sound effect
-        if (sfxAudioSource != null && enemyDeathClip != null)
+        // Play death sound effect via SoundManager or fallback
+        if (soundManager != null)
+            soundManager.PlayEnemyDeath();
+        else if (sfxAudioSource != null && enemyDeathClip != null)
             sfxAudioSource.PlayOneShot(enemyDeathClip);
-        
+
+        // Track kill for high score
+        if (highScoreManager != null)
+            highScoreManager.OnEnemyKilled();
+
         // Remove from list
         GameObject enemyObj = enemy.gameObject;
         if (currentEnemies.Contains(enemyObj))
@@ -415,8 +450,13 @@ public class RoundManager : MonoBehaviour
         }
         
         // Play win SFX when round is cleared (not for round 1 / first enemy)
-        if (currentRound > 1 && sfxAudioSource != null && winClip != null)
-            sfxAudioSource.PlayOneShot(winClip);
+        if (currentRound > 1)
+        {
+            if (soundManager != null)
+                soundManager.PlayRoundWin();
+            else if (sfxAudioSource != null && winClip != null)
+                sfxAudioSource.PlayOneShot(winClip);
+        }
         
         // Store player position for next round's new enemy spawn
         if (playerObject != null)
@@ -438,6 +478,10 @@ public class RoundManager : MonoBehaviour
             }
         }
         
+        // Notify high score manager of round completion
+        if (highScoreManager != null)
+            highScoreManager.OnRoundCompleted(currentRound, currentEnemies.Count);
+
         // Trigger round complete event
         OnRoundComplete?.Invoke(currentRound);
         
@@ -467,8 +511,16 @@ public class RoundManager : MonoBehaviour
         HandlePlayerDeath();
     }
 
+    [Header("Game Over Settings")]
+    [Tooltip("Scene name for start menu (must be in Build Settings)")]
+    public string startMenuSceneName = "Start Menu";
+    [Tooltip("Use build index 0 for start menu scene")]
+    public bool useStartMenuBuildIndex = true;
+    [Tooltip("Delay before returning to start menu after death")]
+    public float returnToMenuDelay = 3f;
+
     /// <summary>
-    /// Handle player death - reset game
+    /// Handle player death - submit score and return to start menu
     /// </summary>
     private void HandlePlayerDeath()
     {
@@ -477,6 +529,10 @@ public class RoundManager : MonoBehaviour
         gameOver = true;
         isRoundActive = false;
         
+        // Submit high score before leaving
+        if (highScoreManager != null)
+            highScoreManager.SubmitScore();
+
         if (youLostPanel != null)
         {
             youLostPanel.SetActive(true);
@@ -489,16 +545,35 @@ public class RoundManager : MonoBehaviour
             }
         }
         
+        // Play game over sound
+        if (soundManager != null)
+            soundManager.PlayGameOver();
+
         if (debugMode)
         {
-            Debug.Log("=== GAME OVER - Player Died ===");
+            Debug.Log("=== GAME OVER - Player Died === Returning to Start Menu...");
         }
         
         // Trigger game over event
         OnGameOver?.Invoke();
         
-        // Reset game after a delay
-        Invoke(nameof(ResetGame), 2f);
+        // Return to start menu after delay
+        Invoke(nameof(ReturnToStartMenu), returnToMenuDelay);
+    }
+
+    /// <summary>
+    /// Load the Start Menu scene after game over.
+    /// </summary>
+    private void ReturnToStartMenu()
+    {
+        if (useStartMenuBuildIndex)
+        {
+            SceneManager.LoadScene(0);
+        }
+        else
+        {
+            SceneManager.LoadScene(startMenuSceneName);
+        }
     }
     
     /// <summary>

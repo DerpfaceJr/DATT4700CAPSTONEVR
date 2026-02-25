@@ -241,9 +241,15 @@ public class EnemySpawner : MonoBehaviour
         if (enemyController == null)
         {
             enemyController = enemy.AddComponent<EnemyController>();
-            enemyController.maxHealth = 100f; // Default if not set on prefab
+            enemyController.maxHealth = 100f;
         }
-        // Note: HP is editable on the prefab, so we don't override it here
+
+        // Add visible HP bar above enemy
+        EnemyHealthBar hpBar = enemy.GetComponent<EnemyHealthBar>();
+        if (hpBar == null)
+        {
+            hpBar = enemy.AddComponent<EnemyHealthBar>();
+        }
         
         // Ensure CombatSystem exists
         CombatSystem combatSystem = enemy.GetComponent<CombatSystem>();
