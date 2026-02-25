@@ -26,6 +26,12 @@ public class HighScoreDisplay : MonoBehaviour
     public float panelWidth = 0.8f;
     public float panelHeight = 1.0f;
 
+    [Header("Font Sizes")]
+    public float headerFontSize = 42f;
+    public float columnHeaderFontSize = 24f;
+    public float entryFontSize = 26f;
+    public float footerFontSize = 18f;
+
     private Canvas hologramCanvas;
     private HighScoreManager highScoreManager;
 
@@ -122,7 +128,7 @@ public class HighScoreDisplay : MonoBehaviour
 
         TextMeshProUGUI headerText = headerObj.AddComponent<TextMeshProUGUI>();
         headerText.text = "HIGH SCORES";
-        headerText.fontSize = 42;
+        headerText.fontSize = headerFontSize;
         headerText.color = headerColor;
         headerText.alignment = TextAlignmentOptions.Center;
         headerText.fontStyle = FontStyles.Bold;
@@ -147,7 +153,7 @@ public class HighScoreDisplay : MonoBehaviour
 
         TextMeshProUGUI colText = colHeaders.AddComponent<TextMeshProUGUI>();
         colText.text = "RANK    ROUNDS    SCORE     DATE";
-        colText.fontSize = 24;
+        colText.fontSize = columnHeaderFontSize;
         colText.color = hologramColor;
         colText.alignment = TextAlignmentOptions.Center;
         colText.fontStyle = FontStyles.Bold;
@@ -183,7 +189,7 @@ public class HighScoreDisplay : MonoBehaviour
             textRect.offsetMax = Vector2.zero;
 
             TextMeshProUGUI entryText = textObj.AddComponent<TextMeshProUGUI>();
-            entryText.fontSize = 26;
+            entryText.fontSize = entryFontSize;
             entryText.alignment = TextAlignmentOptions.Center;
 
             if (i < scores.Count)
@@ -210,7 +216,7 @@ public class HighScoreDisplay : MonoBehaviour
 
         TextMeshProUGUI footerText = footer.AddComponent<TextMeshProUGUI>();
         footerText.text = "SURVIVE  //  FIGHT  //  CONQUER";
-        footerText.fontSize = 18;
+        footerText.fontSize = footerFontSize;
         footerText.color = new Color(hologramColor.r, hologramColor.g, hologramColor.b, 0.5f);
         footerText.alignment = TextAlignmentOptions.Center;
         footerText.fontStyle = FontStyles.Italic;

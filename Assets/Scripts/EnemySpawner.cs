@@ -158,6 +158,7 @@ public class EnemySpawner : MonoBehaviour
         {
             hpBar.healthBarColor = new Color(0.8f, 0.1f, 0.8f, 1f); // Purple for mini-boss
             hpBar.barWidth = 1.2f;
+            hpBar.heightOffset = 3.2f;
             hpBar.hideAtFullHealth = false;
         }
 

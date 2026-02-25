@@ -43,7 +43,12 @@ public class MeleeWeaponSetup : MonoBehaviour
         foreach (SwordPhysicsFix weapon in allMeleeWeapons)
         {
             MeleeDurability durability = weapon.GetComponent<MeleeDurability>();
-            if (durability != null) continue; // Already set up
+            if (durability != null)
+            {
+                // Already has durability, but still ensure icon setup
+                EnsureMinimapIcon(weapon.gameObject, durability);
+                continue;
+            }
 
             durability = weapon.gameObject.AddComponent<MeleeDurability>();
             durability.meleeObj = weapon;
@@ -64,7 +69,7 @@ public class MeleeWeaponSetup : MonoBehaviour
             else
                 durability.hitCountMax = defaultMaxHits;
 
-            // Setup minimap icon if not already present
+            // Setup minimap icon
             EnsureMinimapIcon(weapon.gameObject, durability);
 
             setupCount++;

@@ -24,6 +24,7 @@ public class CombatSystem : MonoBehaviour
      * ========================================================= */
     [Header("Melee Settings")]
     public bool meleeWeaponsEnabled = true;
+    public float meleeDamagePerHit = 25f;
     public float meleeCooldown = 0.3f;
 
     private HashSet<Rigidbody> recentWeapons = new HashSet<Rigidbody>();
@@ -49,8 +50,8 @@ public class CombatSystem : MonoBehaviour
         EnemyController enemy = GetComponent<EnemyController>();
         if (enemy == null) return;
 
-        enemy.TakeDamage(enemy.maxHealth * 100f);
-        Debug.Log("[CombatSystem] MELEE SWORD KILL");
+        enemy.TakeDamage(meleeDamagePerHit);
+        Debug.Log($"[CombatSystem] MELEE HIT for {meleeDamagePerHit} dmg (HP: {enemy.currentHealth}/{enemy.maxHealth})");
 
         recentWeapons.Add(weaponRb);
         StartCoroutine(ClearWeaponCooldown(weaponRb, meleeCooldown));

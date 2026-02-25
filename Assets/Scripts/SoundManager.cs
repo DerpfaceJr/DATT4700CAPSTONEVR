@@ -17,27 +17,29 @@ public class SoundManager : MonoBehaviour
     [Range(0f, 1f)]
     public float bgmVolume = 0.5f;
 
-    [Header("SFX Clips")]
+    [Header("SFX Clips (played via shared sfxSource)")]
     [Tooltip("Sound when enemy is killed")]
     public AudioClip enemyDeathClip;
     [Tooltip("Sound when round is won")]
     public AudioClip roundWinClip;
-    [Tooltip("Walking/footstep sound")]
-    public AudioClip walkingClip;
-    [Tooltip("Player takes damage")]
-    public AudioClip playerHitClip;
     [Tooltip("Weapon break sound")]
     public AudioClip weaponBreakClip;
-    [Tooltip("Enemy attack whoosh")]
-    public AudioClip enemyAttackClip;
-    [Tooltip("Projectile throw sound")]
-    public AudioClip throwClip;
     [Tooltip("Game over / player death")]
     public AudioClip gameOverClip;
     [Tooltip("Round start jingle")]
     public AudioClip roundStartClip;
-    [Tooltip("Mini-boss spawn alert")]
-    public AudioClip miniBossSpawnClip;
+
+    [Header("SFX Sources (dedicated AudioSource per sound, editable in Inspector)")]
+    [Tooltip("Walking/footstep AudioSource")]
+    public AudioSource walkingSource;
+    [Tooltip("Player takes damage AudioSource")]
+    public AudioSource playerHitSource;
+    [Tooltip("Enemy attack whoosh AudioSource")]
+    public AudioSource enemyAttackSource;
+    [Tooltip("Projectile throw AudioSource")]
+    public AudioSource throwSource;
+    [Tooltip("Mini-boss spawn alert AudioSource")]
+    public AudioSource miniBossSpawnSource;
 
     [Header("Volume Settings")]
     [Range(0f, 1f)]
@@ -51,6 +53,7 @@ public class SoundManager : MonoBehaviour
     public AudioSource ambientSource;
 
     private Dictionary<string, AudioClip> clipRegistry = new Dictionary<string, AudioClip>();
+    private Dictionary<string, AudioSource> sourceRegistry = new Dictionary<string, AudioSource>();
 
     void Awake()
     {
@@ -101,14 +104,15 @@ public class SoundManager : MonoBehaviour
     {
         RegisterClip("enemy_death", enemyDeathClip);
         RegisterClip("round_win", roundWinClip);
-        RegisterClip("walking", walkingClip);
-        RegisterClip("player_hit", playerHitClip);
         RegisterClip("weapon_break", weaponBreakClip);
-        RegisterClip("enemy_attack", enemyAttackClip);
-        RegisterClip("throw", throwClip);
         RegisterClip("game_over", gameOverClip);
         RegisterClip("round_start", roundStartClip);
-        RegisterClip("miniboss_spawn", miniBossSpawnClip);
+
+        RegisterSource("walking", walkingSource);
+        RegisterSource("player_hit", playerHitSource);
+        RegisterSource("enemy_attack", enemyAttackSource);
+        RegisterSource("throw", throwSource);
+        RegisterSource("miniboss_spawn", miniBossSpawnSource);
     }
 
     /// <summary>
@@ -121,18 +125,33 @@ public class SoundManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Play a registered SFX by key.
+    /// Register a dedicated AudioSource by key. Skips null sources.
+    /// </summary>
+    public void RegisterSource(string key, AudioSource source)
+    {
+        if (source != null)
+            sourceRegistry[key] = source;
+    }
+
+    /// <summary>
+    /// Play a registered SFX by key. Checks dedicated AudioSource registry first, then clip registry.
     /// </summary>
     public void PlaySFX(string key, float volumeScale = 1f)
     {
+        if (sourceRegistry.TryGetValue(key, out AudioSource source))
+        {
+            source.volume = sfxVolume * masterVolume * volumeScale;
+            source.Play();
+            return;
+        }
+
         if (clipRegistry.TryGetValue(key, out AudioClip clip))
         {
             sfxSource.PlayOneShot(clip, sfxVolume * masterVolume * volumeScale);
+            return;
         }
-        else
-        {
-            Debug.LogWarning($"[SoundManager] SFX key '{key}' not registered.");
-        }
+
+        Debug.LogWarning($"[SoundManager] SFX key '{key}' not registered.");
     }
 
     /// <summary>
@@ -146,9 +165,19 @@ public class SoundManager : MonoBehaviour
 
     /// <summary>
     /// Play a 3D positional SFX at a world position.
+    /// For source-based SFX, moves the source to position and plays.
+    /// For clip-based SFX, uses PlayClipAtPoint.
     /// </summary>
     public void PlaySFXAtPosition(string key, Vector3 position, float volumeScale = 1f)
     {
+        if (sourceRegistry.TryGetValue(key, out AudioSource source))
+        {
+            source.transform.position = position;
+            source.volume = sfxVolume * masterVolume * volumeScale;
+            source.Play();
+            return;
+        }
+
         if (clipRegistry.TryGetValue(key, out AudioClip clip))
         {
             AudioSource.PlayClipAtPoint(clip, position, sfxVolume * masterVolume * volumeScale);

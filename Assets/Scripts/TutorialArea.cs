@@ -4,8 +4,7 @@ using TMPro;
 
 /// <summary>
 /// Creates a tutorial/practice area in the Start Menu scene.
-/// Spawns a dummy enemy with unlimited health for throwing and combat practice.
-/// Also spawns practice throwable objects.
+/// Spawns a dummy enemy with unlimited health for combat practice.
 /// Place on a GameObject in the Start Menu scene.
 /// </summary>
 public class TutorialArea : MonoBehaviour
@@ -24,16 +23,14 @@ public class TutorialArea : MonoBehaviour
     [Tooltip("Position offset for the dummy enemy relative to tutorial center")]
     public Vector3 dummyEnemyOffset = new Vector3(0f, 0f, 2f);
 
-    [Header("Practice Objects")]
-    [Tooltip("Number of practice throwable objects to spawn")]
-    public int practiceObjectCount = 3;
-
-    [Tooltip("Spacing between practice objects")]
-    public float objectSpacing = 0.6f;
-
     [Header("UI")]
     [Tooltip("Show tutorial instructions panel")]
     public bool showInstructions = true;
+
+    [Header("Font Sizes")]
+    public float titleFontSize = 36f;
+    public float instructionsFontSize = 20f;
+    public float dummyLabelFontSize = 28f;
 
     private GameObject dummyEnemy;
     private GameObject tutorialPanel;
@@ -46,7 +43,6 @@ public class TutorialArea : MonoBehaviour
             center = referencePoint.position + referencePoint.TransformDirection(tutorialCenter);
 
         SpawnDummyEnemy(center);
-        SpawnPracticeObjects(center);
 
         if (showInstructions)
             CreateInstructionPanel(center);
@@ -131,43 +127,6 @@ public class TutorialArea : MonoBehaviour
         Debug.Log($"[TutorialArea] Spawned dummy enemy at {spawnPos}");
     }
 
-    private void SpawnPracticeObjects(Vector3 center)
-    {
-        Vector3 objectStart = center + new Vector3(-((practiceObjectCount - 1) * objectSpacing * 0.5f), 1f, -1f);
-
-        for (int i = 0; i < practiceObjectCount; i++)
-        {
-            Vector3 pos = objectStart + new Vector3(i * objectSpacing, 0f, 0f);
-            GameObject ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            ball.name = $"PracticeBall_{i}";
-            ball.transform.position = pos;
-            ball.transform.localScale = Vector3.one * 0.2f;
-
-            Renderer rend = ball.GetComponent<Renderer>();
-            if (rend != null)
-            {
-                Material mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                mat.color = new Color(0.2f, 0.5f, 1f, 1f);
-                rend.material = mat;
-            }
-
-            Rigidbody rb = ball.AddComponent<Rigidbody>();
-            rb.mass = 0.5f;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-
-            // Add projectile component for combat
-            BuildingBlockProjectile proj = ball.AddComponent<BuildingBlockProjectile>();
-            proj.minThrowVelocity = 1f;
-
-            // Auto-reset: respawn at original position
-            PracticeObjectResetter resetter = ball.AddComponent<PracticeObjectResetter>();
-            resetter.originalPosition = pos;
-            resetter.resetDelay = 4f;
-        }
-
-        Debug.Log($"[TutorialArea] Spawned {practiceObjectCount} practice objects.");
-    }
-
     private void CreateInstructionPanel(Vector3 center)
     {
         Vector3 panelPos = center + new Vector3(0f, 2f, 1.5f);
@@ -209,7 +168,7 @@ public class TutorialArea : MonoBehaviour
         titleRect.offsetMax = new Vector2(-10, -10);
         TextMeshProUGUI titleText = titleObj.AddComponent<TextMeshProUGUI>();
         titleText.text = "TUTORIAL AREA";
-        titleText.fontSize = 36;
+        titleText.fontSize = titleFontSize;
         titleText.color = new Color(0f, 1f, 0.8f, 1f);
         titleText.alignment = TextAlignmentOptions.Center;
         titleText.fontStyle = FontStyles.Bold;
@@ -230,7 +189,7 @@ public class TutorialArea : MonoBehaviour
             "<color=#FFD700>MELEE:</color> Grab weapon and swing at enemy\n\n" +
             "The dummy enemy has <color=#FF4444>unlimited health</color>\n" +
             "so practice as much as you want!";
-        instrText.fontSize = 20;
+        instrText.fontSize = instructionsFontSize;
         instrText.color = new Color(0.85f, 0.9f, 1f, 0.95f);
         instrText.alignment = TextAlignmentOptions.Left;
 
@@ -261,63 +220,12 @@ public class TutorialArea : MonoBehaviour
         textRect.offsetMax = Vector2.zero;
         TextMeshProUGUI label = textObj.AddComponent<TextMeshProUGUI>();
         label.text = "TRAINING DUMMY";
-        label.fontSize = 28;
+        label.fontSize = dummyLabelFontSize;
         label.color = new Color(1f, 0.8f, 0f, 1f);
         label.alignment = TextAlignmentOptions.Center;
         label.fontStyle = FontStyles.Bold;
 
         canvasObj.AddComponent<FaceCameraBillboard>();
-    }
-}
-
-/// <summary>
-/// Auto-resets a practice object to its original position after it falls or sits idle.
-/// </summary>
-public class PracticeObjectResetter : MonoBehaviour
-{
-    public Vector3 originalPosition;
-    public float resetDelay = 4f;
-    public float fallThreshold = -5f;
-
-    private float idleTimer = 0f;
-    private Rigidbody rb;
-
-    void Start()
-    {
-        rb = GetComponent<Rigidbody>();
-    }
-
-    void Update()
-    {
-        if (transform.position.y < fallThreshold)
-        {
-            ResetObject();
-            return;
-        }
-
-        if (rb != null && rb.linearVelocity.magnitude < 0.1f)
-        {
-            idleTimer += Time.deltaTime;
-            if (idleTimer >= resetDelay)
-            {
-                ResetObject();
-            }
-        }
-        else
-        {
-            idleTimer = 0f;
-        }
-    }
-
-    private void ResetObject()
-    {
-        transform.position = originalPosition;
-        if (rb != null)
-        {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-        }
-        idleTimer = 0f;
     }
 }
 

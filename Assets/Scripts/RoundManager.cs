@@ -157,27 +157,8 @@ public class RoundManager : MonoBehaviour
         if (soundManager == null)
             soundManager = FindObjectOfType<SoundManager>();
 
-        // Start in-game BGM: prefer SoundManager, fallback to local AudioSource
-        if (soundManager != null)
-        {
-            if (bgmClip != null)
-                soundManager.PlayBGM(bgmClip);
-            else
-                soundManager.PlayBGM();
-        }
-        else if (bgmClip != null)
-        {
-            if (bgmAudioSource == null)
-                bgmAudioSource = GetComponent<AudioSource>();
-            if (bgmAudioSource == null)
-                bgmAudioSource = gameObject.AddComponent<AudioSource>();
-            bgmAudioSource.clip = bgmClip;
-            bgmAudioSource.loop = true;
-            bgmAudioSource.volume = bgmVolume;
-            bgmAudioSource.spatialBlend = 0f;
-            bgmAudioSource.playOnAwake = false;
-            bgmAudioSource.Play();
-        }
+        // BGM is handled exclusively by SoundManager on the Audio Manager GameObject.
+        // Do NOT play BGM here to avoid duplicate audio.
 
         // Initialize high score tracking
         highScoreManager = HighScoreManager.Instance;
@@ -306,8 +287,10 @@ public class RoundManager : MonoBehaviour
             Debug.Log($"Round {currentRound}: Existing enemy slots: [{existingSlotsStr}], Target slots: 1-{targetEnemyCount}");
         }
         
-        // Determine if this is a mini-boss round (every 5 rounds)
+        // Determine mini-boss count: round 5=1, round 10=2, round 15=3, etc.
         bool isMiniBossRound = (currentRound % 5 == 0) && currentRound > 0;
+        int miniBossCount = isMiniBossRound ? currentRound / 5 : 0;
+        int miniBossSlotStart = targetEnemyCount - miniBossCount + 1;
 
         // Spawn enemies for missing slots
         if (enemySpawner != null)
@@ -336,13 +319,13 @@ public class RoundManager : MonoBehaviour
                 
                 int enemyIndex = currentEnemies.Count;
                 GameObject newEnemy;
+                bool isBossSlot = isMiniBossRound && roundSlot >= miniBossSlotStart;
 
-                // On mini-boss rounds, the newly spawned enemy for the current round slot is a mini-boss
-                if (isMiniBossRound && roundSlot == currentRound)
+                if (isBossSlot)
                 {
                     newEnemy = enemySpawner.SpawnMiniBossAt(enemyIndex, spawnPosition);
                     if (debugMode)
-                        Debug.Log($"*** MINI-BOSS ROUND {currentRound}! Spawning boss at slot {roundSlot} ***");
+                        Debug.Log($"*** MINI-BOSS ROUND {currentRound}! Spawning boss at slot {roundSlot} ({miniBossCount} total bosses) ***");
                 }
                 else
                 {
@@ -362,7 +345,7 @@ public class RoundManager : MonoBehaviour
                     
                     if (debugMode)
                     {
-                        string type = (isMiniBossRound && roundSlot == currentRound) ? "MINI-BOSS" : "enemy";
+                        string type = isBossSlot ? "MINI-BOSS" : "enemy";
                         Debug.Log($"Spawned {type} for slot {roundSlot} at {spawnPosition}. Total enemies: {currentEnemies.Count}");
                     }
                     
