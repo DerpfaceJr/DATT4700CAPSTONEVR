@@ -152,6 +152,11 @@ public class RoundManager : MonoBehaviour
             }
         }
         
+        // Initialize sound manager
+        soundManager = SoundManager.Instance;
+        if (soundManager == null)
+            soundManager = FindObjectOfType<SoundManager>();
+
         // Start in-game BGM: prefer SoundManager, fallback to local AudioSource
         if (soundManager != null)
         {
@@ -173,11 +178,6 @@ public class RoundManager : MonoBehaviour
             bgmAudioSource.playOnAwake = false;
             bgmAudioSource.Play();
         }
-        
-        // Initialize sound manager
-        soundManager = SoundManager.Instance;
-        if (soundManager == null)
-            soundManager = FindObjectOfType<SoundManager>();
 
         // Initialize high score tracking
         highScoreManager = HighScoreManager.Instance;

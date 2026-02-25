@@ -20,6 +20,10 @@ public class EnemyController : MonoBehaviour
     
     [Tooltip("Duration of damage flash (seconds)")]
     public float damageFlashDuration = 0.1f;
+
+    [Header("Special")]
+    [Tooltip("If true, this enemy cannot die (used for tutorial dummies)")]
+    public bool isInvulnerable = false;
     
     private Material originalMaterial;
     private Renderer enemyRenderer;
@@ -58,7 +62,7 @@ public class EnemyController : MonoBehaviour
     /// </summary>
     public void TakeDamage(float damageAmount)
     {
-        if (currentHealth <= 0f) return; // Already dead
+        if (currentHealth <= 0f) return;
         
         currentHealth -= damageAmount;
         currentHealth = Mathf.Max(0f, currentHealth);
@@ -73,7 +77,13 @@ public class EnemyController : MonoBehaviour
             damageFlashTimer = damageFlashDuration;
         }
         
-        // Check for death
+        // Invulnerable enemies (tutorial dummies) take damage visually but don't die
+        if (isInvulnerable)
+        {
+            currentHealth = maxHealth;
+            return;
+        }
+
         if (currentHealth <= 0f)
         {
             Die();

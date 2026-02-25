@@ -54,13 +54,7 @@ public class TutorialArea : MonoBehaviour
 
     void Update()
     {
-        // Keep dummy enemy alive (unlimited health)
-        if (dummyController != null && dummyController.currentHealth < dummyController.maxHealth)
-        {
-            dummyController.currentHealth = dummyController.maxHealth;
-        }
-
-        // Respawn if destroyed somehow
+        // Respawn dummy if destroyed somehow
         if (dummyEnemy == null)
         {
             Vector3 center = tutorialCenter;
@@ -105,8 +99,9 @@ public class TutorialArea : MonoBehaviour
         dummyController = dummyEnemy.GetComponent<EnemyController>();
         if (dummyController == null)
             dummyController = dummyEnemy.AddComponent<EnemyController>();
-        dummyController.maxHealth = 999999f;
-        dummyController.currentHealth = 999999f;
+        dummyController.maxHealth = 100f;
+        dummyController.currentHealth = 100f;
+        dummyController.isInvulnerable = true;
 
         // Add combat system so it reacts to hits
         CombatSystem cs = dummyEnemy.GetComponent<CombatSystem>();
@@ -130,19 +125,10 @@ public class TutorialArea : MonoBehaviour
         if (agent != null)
             agent.enabled = false;
 
-        // Override death: dummy should never die
-        dummyController.OnEnemyDeath += OnDummyDeath;
-
         // Floating label
         CreateDummyLabel(dummyEnemy.transform);
 
         Debug.Log($"[TutorialArea] Spawned dummy enemy at {spawnPos}");
-    }
-
-    private void OnDummyDeath(EnemyController controller)
-    {
-        // Prevent actual death by restoring health
-        controller.currentHealth = controller.maxHealth;
     }
 
     private void SpawnPracticeObjects(Vector3 center)
