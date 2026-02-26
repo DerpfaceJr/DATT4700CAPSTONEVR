@@ -359,13 +359,13 @@ public class EnemySpawner : MonoBehaviour
             combatSystem = enemy.AddComponent<CombatSystem>();
             combatSystem.damageMultiplier = 1f;
             combatSystem.minDamageVelocity = 2f;
-            combatSystem.instakillEnabled = true; // Enable instakill by default
+            combatSystem.instakillEnabled = false; // Use per-throwable damage instead of instakill
             combatSystem.instakillMinVelocity = 1.5f; // Prevent death from touching static objects
         }
         else
         {
-            // Ensure instakill is enabled on existing CombatSystem
-            combatSystem.instakillEnabled = true;
+            // Use per-throwable damage instead of instakill
+            combatSystem.instakillEnabled = false;
             combatSystem.instakillMinVelocity = 1.5f; // Prevent death from touching static objects
         }
         

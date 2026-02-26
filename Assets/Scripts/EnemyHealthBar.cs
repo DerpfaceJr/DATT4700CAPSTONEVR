@@ -2,9 +2,10 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Creates and manages a world-space health bar above an enemy.
-/// Uses the same visual style as the player HP bar (red fill Image).
-/// Automatically attaches to EnemyController and updates in real-time.
+/// Manages a world-space health bar above an enemy.
+/// If a child "HealthBarCanvas" exists in the prefab, it is unparented at runtime
+/// so the enemy's own scale (e.g. 0.18) does not shrink the canvas.
+/// Falls back to runtime creation if no prefab canvas is found.
 /// </summary>
 public class EnemyHealthBar : MonoBehaviour
 {
@@ -25,13 +26,12 @@ public class EnemyHealthBar : MonoBehaviour
 
     [Header("Behavior")]
     [Tooltip("Hide bar when enemy is at full health")]
-    public bool hideAtFullHealth = true;
+    public bool hideAtFullHealth = false;
     [Tooltip("Delay before hiding after taking no damage")]
     public float hideDelay = 3f;
 
     private EnemyController enemyController;
-    private Canvas healthCanvas;
-    private Image backgroundImage;
+    private RectTransform fillRect;  // Use rect anchors instead of fillAmount for reliable updates
     private Image fillImage;
     private GameObject healthBarRoot;
     private float lastDamageTime = -999f;
@@ -39,18 +39,22 @@ public class EnemyHealthBar : MonoBehaviour
 
     void Start()
     {
-        enemyController = GetComponent<EnemyController>();
+        // Use GetComponentInParent so health bar works when on parent/child of EnemyController
+        enemyController = GetComponentInParent<EnemyController>();
         if (enemyController == null)
         {
-            Debug.LogWarning($"[EnemyHealthBar] No EnemyController on {gameObject.name}");
+            Debug.LogWarning($"[EnemyHealthBar] No EnemyController on {gameObject.name} or parents");
             enabled = false;
             return;
         }
 
-        CreateHealthBar();
-
+        SetupHealthBar();
         enemyController.OnEnemyDamaged += OnDamaged;
         isSetup = true;
+        UpdateFill();
+
+        if (hideAtFullHealth && enemyController.GetHealthPercentage() >= 1f)
+            healthBarRoot.SetActive(false);
     }
 
     void OnDestroy()
@@ -62,91 +66,120 @@ public class EnemyHealthBar : MonoBehaviour
             Destroy(healthBarRoot);
     }
 
-    private void OnDamaged(EnemyController controller, float damage)
+    private void SetupHealthBar()
     {
-        lastDamageTime = Time.time;
-        UpdateFill();
-    }
-
-    void LateUpdate()
-    {
-        if (!isSetup || healthBarRoot == null) return;
-
-        // Position above enemy
-        Vector3 worldPos = transform.position + Vector3.up * heightOffset;
-        healthBarRoot.transform.position = worldPos;
-
-        // Billboard: always face the camera
-        Camera cam = Camera.main;
-        if (cam != null)
+        Transform prefabCanvas = transform.Find("HealthBarCanvas");
+        if (prefabCanvas != null)
         {
-            healthBarRoot.transform.rotation = Quaternion.LookRotation(
-                healthBarRoot.transform.position - cam.transform.position
-            );
+            healthBarRoot = prefabCanvas.gameObject;
+            prefabCanvas.SetParent(null, true);
+        }
+        else
+        {
+            healthBarRoot = new GameObject($"HealthBar_{gameObject.name}");
         }
 
-        // Visibility logic
-        if (hideAtFullHealth && enemyController != null)
-        {
-            bool shouldShow = enemyController.GetHealthPercentage() < 1f;
-            if (!shouldShow && hideDelay > 0 && Time.time - lastDamageTime < hideDelay)
-                shouldShow = true;
-
-            healthBarRoot.SetActive(shouldShow);
-        }
-    }
-
-    private void UpdateFill()
-    {
-        if (fillImage == null || enemyController == null) return;
-
-        float pct = enemyController.GetHealthPercentage();
-        fillImage.fillAmount = pct;
-
-        fillImage.color = pct < 0.3f ? lowHealthColor : healthBarColor;
-    }
-
-    private void CreateHealthBar()
-    {
-        healthBarRoot = new GameObject("EnemyHealthBar");
         healthBarRoot.transform.position = transform.position + Vector3.up * heightOffset;
+        healthBarRoot.transform.localScale = new Vector3(0.001f, 0.001f, 0.001f);
 
-        healthCanvas = healthBarRoot.AddComponent<Canvas>();
-        healthCanvas.renderMode = RenderMode.WorldSpace;
-        healthCanvas.sortingOrder = 10;
+        Canvas canvas = healthBarRoot.GetComponent<Canvas>();
+        if (canvas == null)
+            canvas = healthBarRoot.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+        canvas.sortingOrder = 10;
+        canvas.worldCamera = Camera.main; // Required for World Space canvas to render
 
         RectTransform canvasRect = healthBarRoot.GetComponent<RectTransform>();
         canvasRect.sizeDelta = new Vector2(barWidth * 1000f, barHeight * 1000f);
         canvasRect.localScale = new Vector3(0.001f, 0.001f, 0.001f);
 
-        // Background
+        Transform fillT = healthBarRoot.transform.Find("Fill");
+        Transform bgT = healthBarRoot.transform.Find("Background");
+
+        if (fillT == null || bgT == null)
+        {
+            BuildBarChildren(healthBarRoot.transform);
+        }
+        else
+        {
+            fillImage = fillT.GetComponent<Image>();
+            fillRect = fillT.GetComponent<RectTransform>();
+            Image bgImg = bgT.GetComponent<Image>();
+            if (bgImg != null) bgImg.color = backgroundBarColor;
+
+            RectTransform bgRect = bgT.GetComponent<RectTransform>();
+            if (bgRect != null)
+            {
+                bgRect.anchorMin = Vector2.zero;
+                bgRect.anchorMax = Vector2.one;
+                bgRect.offsetMin = Vector2.zero;
+                bgRect.offsetMax = Vector2.zero;
+                bgRect.localPosition = Vector3.zero;
+                bgRect.localScale = Vector3.one;
+            }
+
+            if (fillRect != null)
+            {
+                fillRect.anchorMin = new Vector2(0f, 0f);
+                fillRect.anchorMax = new Vector2(1f, 1f);
+                fillRect.pivot = new Vector2(0f, 0.5f);
+                fillRect.offsetMin = new Vector2(2, 2);
+                fillRect.offsetMax = new Vector2(-2, -2);
+                fillRect.localPosition = Vector3.zero;
+                fillRect.localScale = Vector3.one;
+            }
+
+            Transform borderT = healthBarRoot.transform.Find("Border");
+            if (borderT != null)
+            {
+                RectTransform borderRect = borderT.GetComponent<RectTransform>();
+                if (borderRect != null)
+                {
+                    borderRect.anchorMin = Vector2.zero;
+                    borderRect.anchorMax = Vector2.one;
+                    borderRect.offsetMin = Vector2.zero;
+                    borderRect.offsetMax = Vector2.zero;
+                    borderRect.localPosition = Vector3.zero;
+                    borderRect.localScale = Vector3.one;
+                }
+            }
+        }
+
+        if (fillImage != null)
+        {
+            fillImage.color = healthBarColor;
+            fillImage.type = Image.Type.Simple;  // Use Simple + rect anchors for reliable bar
+        }
+        if (fillRect == null)
+            fillRect = healthBarRoot.transform.Find("Fill")?.GetComponent<RectTransform>();
+    }
+
+    private void BuildBarChildren(Transform parent)
+    {
         GameObject bgObj = new GameObject("Background");
-        bgObj.transform.SetParent(healthBarRoot.transform, false);
+        bgObj.transform.SetParent(parent, false);
         RectTransform bgRect = bgObj.AddComponent<RectTransform>();
         bgRect.anchorMin = Vector2.zero;
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        backgroundImage = bgObj.AddComponent<Image>();
-        backgroundImage.color = backgroundBarColor;
+        Image bgImage = bgObj.AddComponent<Image>();
+        bgImage.color = backgroundBarColor;
 
-        // Fill bar
         GameObject fillObj = new GameObject("Fill");
-        fillObj.transform.SetParent(healthBarRoot.transform, false);
-        RectTransform fillRect = fillObj.AddComponent<RectTransform>();
-        fillRect.anchorMin = Vector2.zero;
-        fillRect.anchorMax = Vector2.one;
-        fillRect.offsetMin = new Vector2(2, 2);
-        fillRect.offsetMax = new Vector2(-2, -2);
+        fillObj.transform.SetParent(parent, false);
+        this.fillRect = fillObj.AddComponent<RectTransform>();
+        this.fillRect.anchorMin = new Vector2(0f, 0f);
+        this.fillRect.anchorMax = new Vector2(1f, 1f);
+        this.fillRect.pivot = new Vector2(0f, 0.5f);
+        this.fillRect.offsetMin = new Vector2(2, 2);
+        this.fillRect.offsetMax = new Vector2(-2, -2);
         fillImage = fillObj.AddComponent<Image>();
         fillImage.color = healthBarColor;
-        fillImage.type = Image.Type.Filled;
-        fillImage.fillMethod = Image.FillMethod.Horizontal;
-        fillImage.fillAmount = 1f;
+        fillImage.type = Image.Type.Simple;
 
-        // Border
         GameObject borderObj = new GameObject("Border");
-        borderObj.transform.SetParent(healthBarRoot.transform, false);
+        borderObj.transform.SetParent(parent, false);
         RectTransform borderRect = borderObj.AddComponent<RectTransform>();
         borderRect.anchorMin = Vector2.zero;
         borderRect.anchorMax = Vector2.one;
@@ -157,8 +190,67 @@ public class EnemyHealthBar : MonoBehaviour
         Outline outline = borderObj.AddComponent<Outline>();
         outline.effectColor = new Color(0, 0, 0, 0.7f);
         outline.effectDistance = new Vector2(1, 1);
+    }
 
+    private void OnDamaged(EnemyController controller, float damage)
+    {
+        lastDamageTime = Time.time;
+        UpdateFill();
+    }
+
+    void LateUpdate()
+    {
+        if (!isSetup || healthBarRoot == null) return;
+        // Refresh world camera in case it was null at Start (e.g. XR camera not ready)
+        Canvas c = healthBarRoot.GetComponent<Canvas>();
+        if (c != null && c.worldCamera == null)
+            c.worldCamera = Camera.main;
+        if (enemyController == null || !enemyController.IsAlive())
+        {
+            if (healthBarRoot != null)
+                healthBarRoot.SetActive(false);
+            return;
+        }
+
+        // Always sync fill with current health (handles melee, projectiles, any damage source)
+        UpdateFill();
+
+        healthBarRoot.transform.position = transform.position + Vector3.up * heightOffset;
+
+        Camera cam = Camera.main;
+        if (cam != null)
+        {
+            healthBarRoot.transform.rotation = Quaternion.LookRotation(
+                healthBarRoot.transform.position - cam.transform.position
+            );
+        }
+
+        bool shouldShow = true;
         if (hideAtFullHealth)
-            healthBarRoot.SetActive(false);
+        {
+            shouldShow = enemyController.GetHealthPercentage() < 1f;
+            if (!shouldShow && hideDelay > 0 && Time.time - lastDamageTime < hideDelay)
+                shouldShow = true;
+        }
+        healthBarRoot.SetActive(shouldShow);
+    }
+
+    private void UpdateFill()
+    {
+        if (enemyController == null) return;
+
+        float pct = Mathf.Clamp01(enemyController.GetHealthPercentage());
+
+        // Use rect anchors for reliable bar (fillAmount can fail with World Space canvas)
+        if (fillRect != null)
+        {
+            fillRect.anchorMin = new Vector2(0f, 0f);
+            fillRect.anchorMax = new Vector2(pct, 1f);
+            fillRect.offsetMin = new Vector2(2, 2);
+            fillRect.offsetMax = new Vector2(-2, -2);
+        }
+
+        if (fillImage != null)
+            fillImage.color = pct < 0.3f ? lowHealthColor : healthBarColor;
     }
 }

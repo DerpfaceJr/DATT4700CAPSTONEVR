@@ -12,6 +12,7 @@ public class CombatSystem : MonoBehaviour
      * VARIABLES REQUIRED BY EnemySpawner (DO NOT REMOVE)
      * ========================================================= */
     [Header("Damage Settings")]
+    [Tooltip("Fallback damage multiplier for velocity-based projectile damage (when throwable has no fixed damage)")]
     public float damageMultiplier = 1f;
     public float minDamageVelocity = 2f;
 
@@ -24,7 +25,8 @@ public class CombatSystem : MonoBehaviour
      * ========================================================= */
     [Header("Melee Settings")]
     public bool meleeWeaponsEnabled = true;
-    public float meleeDamagePerHit = 25f;
+    [Tooltip("Fallback damage when a melee weapon has no SwordPhysicsFix.damagePerHit or it is <= 0")]
+    public float meleeDamagePerHitFallback = 25f;
     public float meleeCooldown = 0.3f;
 
     private HashSet<Rigidbody> recentWeapons = new HashSet<Rigidbody>();
@@ -47,11 +49,19 @@ public class CombatSystem : MonoBehaviour
         // ONLY blade colliders
         if (!sword.IsBladeCollider(other)) return;
 
-        EnemyController enemy = GetComponent<EnemyController>();
+        float damage = sword.damagePerHit > 0f ? sword.damagePerHit : meleeDamagePerHitFallback;
+
+        // Use GetComponentInParent so colliders on child bones still find the root EnemyController
+        EnemyController enemy = GetComponentInParent<EnemyController>();
         if (enemy == null) return;
 
-        enemy.TakeDamage(meleeDamagePerHit);
-        Debug.Log($"[CombatSystem] MELEE HIT for {meleeDamagePerHit} dmg (HP: {enemy.currentHealth}/{enemy.maxHealth})");
+        enemy.TakeDamage(damage);
+        Debug.Log($"[CombatSystem] MELEE HIT for {damage} dmg (HP: {enemy.currentHealth}/{enemy.maxHealth})");
+
+        // Sync durability: only count when damage is actually dealt (1 hit = 1 durability tick)
+        MeleeDurability durability = weaponRb.GetComponentInChildren<MeleeDurability>();
+        if (durability != null)
+            durability.RecordHit();
 
         recentWeapons.Add(weaponRb);
         StartCoroutine(ClearWeaponCooldown(weaponRb, meleeCooldown));
@@ -76,7 +86,8 @@ public class CombatSystem : MonoBehaviour
         float requiredVelocity = instakillEnabled ? instakillMinVelocity : minDamageVelocity;
         if (objectSpeed < requiredVelocity) return;
 
-        EnemyController enemy = GetComponent<EnemyController>();
+        // Use GetComponentInParent so colliders on child bones still find the root EnemyController
+        EnemyController enemy = GetComponentInParent<EnemyController>();
         if (enemy == null) return;
 
         if (instakillEnabled)
@@ -86,8 +97,19 @@ public class CombatSystem : MonoBehaviour
         }
         else
         {
-            float damage = objectSpeed * rb.mass * damageMultiplier;
+            float damage;
+            BuildingBlockProjectile projectile = rb.GetComponent<BuildingBlockProjectile>();
+            if (projectile != null && projectile.damagePerHit > 0f)
+            {
+                damage = projectile.damagePerHit;
+            }
+            else
+            {
+                float mult = (projectile != null && projectile.damageMultiplier > 0f) ? projectile.damageMultiplier : damageMultiplier;
+                damage = objectSpeed * rb.mass * mult;
+            }
             enemy.TakeDamage(damage);
+            Debug.Log($"[CombatSystem] PROJECTILE HIT for {damage} dmg (HP: {enemy.currentHealth}/{enemy.maxHealth})");
         }
     }
 

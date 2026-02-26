@@ -10,8 +10,11 @@ public class BuildingBlockProjectile : MonoBehaviour
     [Header("Combat Settings")]
     [Tooltip("Minimum velocity to register as a thrown projectile")]
     public float minThrowVelocity = 1.0f;
-    
-    [Tooltip("Damage multiplier for this projectile")]
+
+    [Tooltip("Fixed damage per hit when > 0 (like melee). When 0, uses velocity-based damage.")]
+    public float damagePerHit = 0f;
+
+    [Tooltip("Damage multiplier when using velocity-based damage (only used when damagePerHit is 0)")]
     public float damageMultiplier = 1.0f;
     
     private Rigidbody rb;

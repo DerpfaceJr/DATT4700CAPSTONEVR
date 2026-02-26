@@ -77,7 +77,8 @@ public class MeleeDurability : MonoBehaviour
             if (weaponIcon != null)
             {
                 weaponIcon.gameObject.SetActive(true);
-                durabilityText.text = $"x{hitCountMax - hitCount}";
+                if (durabilityText != null)
+                    durabilityText.text = $"x{hitCountMax - hitCount}";
             }
                
         }
@@ -94,13 +95,13 @@ public class MeleeDurability : MonoBehaviour
     }
 
 
-    private void OnTriggerEnter(Collider other)
+    /// <summary>
+    /// Called by CombatSystem when this weapon deals melee damage.
+    /// Keeps durability in sync with actual hits (1 damage event = 1 durability tick).
+    /// </summary>
+    public void RecordHit()
     {
-        if (!other.CompareTag("Enemy"))
-            return;
-
         hitCount++;
-
         if (hitCount >= hitCountMax)
         {
             StartCoroutine(BreakAndRespawn());

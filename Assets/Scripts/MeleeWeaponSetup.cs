@@ -45,8 +45,9 @@ public class MeleeWeaponSetup : MonoBehaviour
             MeleeDurability durability = weapon.GetComponent<MeleeDurability>();
             if (durability != null)
             {
-                // Already has durability, but still ensure icon setup
+                // Already has durability: ensure icon setup and update hitCountMax if too low
                 EnsureMinimapIcon(weapon.gameObject, durability);
+                ApplyHitCountMax(weapon.gameObject.name, durability);
                 continue;
             }
 
@@ -54,20 +55,7 @@ public class MeleeWeaponSetup : MonoBehaviour
             durability.meleeObj = weapon;
             durability.respawnDelay = respawnDelay;
 
-            // Set hit count based on weapon name
-            string weaponName = weapon.gameObject.name.ToLower();
-            if (weaponName.Contains("pickaxe"))
-                durability.hitCountMax = 5;
-            else if (weaponName.Contains("crowbar"))
-                durability.hitCountMax = 7;
-            else if (weaponName.Contains("wrench"))
-                durability.hitCountMax = 6;
-            else if (weaponName.Contains("mallet") || weaponName.Contains("hammer"))
-                durability.hitCountMax = 4;
-            else if (weaponName.Contains("sword"))
-                durability.hitCountMax = 8;
-            else
-                durability.hitCountMax = defaultMaxHits;
+            ApplyHitCountMax(weapon.gameObject.name, durability);
 
             // Setup minimap icon
             EnsureMinimapIcon(weapon.gameObject, durability);
@@ -80,6 +68,24 @@ public class MeleeWeaponSetup : MonoBehaviour
             Debug.Log($"[MeleeWeaponSetup] Set up {setupCount} melee weapons with durability.");
         else
             Debug.Log("[MeleeWeaponSetup] All melee weapons already have MeleeDurability.");
+    }
+
+    private void ApplyHitCountMax(string weaponName, MeleeDurability durability)
+    {
+        // ~4 hits to kill 100 HP enemy at 25 dmg. hitCountMax allows 2–3 kills per weapon.
+        string name = weaponName.ToLower();
+        if (name.Contains("pickaxe"))
+            durability.hitCountMax = 12;
+        else if (name.Contains("crowbar"))
+            durability.hitCountMax = 14;
+        else if (name.Contains("wrench"))
+            durability.hitCountMax = 12;
+        else if (name.Contains("mallet") || name.Contains("hammer"))
+            durability.hitCountMax = 10;
+        else if (name.Contains("sword"))
+            durability.hitCountMax = 16;
+        else
+            durability.hitCountMax = Mathf.Max(defaultMaxHits, 12);
     }
 
     private void EnsureMinimapIcon(GameObject weapon, MeleeDurability durability)
