@@ -20,6 +20,30 @@ public class EnemyController : MonoBehaviour
     
     [Tooltip("Duration of damage flash (seconds)")]
     public float damageFlashDuration = 0.15f;
+    
+    [Header("Hit Effect")]
+    [Tooltip("Particle effect prefab to spawn when taking damage (e.g. HitParticle)")]
+    public GameObject hitEffectPrefab;
+    
+    [Tooltip("Number of hit effect instances to spawn per hit (creates a fuller burst)")]
+    [Min(1)]
+    public int hitEffectCount = 2;
+    
+    [Tooltip("Particle size (overrides prefab when > 0)")]
+    [Min(0)]
+    public float hitEffectSize = 0.5f;
+    
+    [Tooltip("Particle lifetime in seconds (overrides prefab when > 0)")]
+    [Min(0)]
+    public float hitEffectLifetime = 0.8f;
+    
+    [Tooltip("Particle color range - random between start and end")]
+    public Color hitEffectColorStart = new Color(1f, 0.3f, 0.1f, 1f);
+    public Color hitEffectColorEnd = new Color(1f, 0.6f, 0.2f, 1f);
+    
+    [Tooltip("Scale multiplier for the hit effect (affects overall size)")]
+    [Min(0.1f)]
+    public float hitEffectScale = 2.5f;
 
     [Header("Special")]
     [Tooltip("If true, this enemy cannot die (used for tutorial dummies)")]
@@ -92,6 +116,35 @@ public class EnemyController : MonoBehaviour
         // Trigger damage event
         OnEnemyDamaged?.Invoke(this, damageAmount);
         
+        // Spawn hit particle effect
+        if (hitEffectPrefab != null)
+        {
+            Vector3 center = GetHitEffectSpawnCenter();
+            // Offset forward and up so effect is visible (not buried in mesh)
+            Vector3 viewOffset = Vector3.up * 0.4f + transform.forward * 0.3f;
+            for (int i = 0; i < hitEffectCount; i++)
+            {
+                Vector3 offset = new Vector3(
+                    UnityEngine.Random.Range(-0.15f, 0.15f),
+                    UnityEngine.Random.Range(-0.1f, 0.2f),
+                    UnityEngine.Random.Range(-0.15f, 0.15f));
+                Vector3 spawnPos = center + viewOffset + offset;
+                Quaternion rot = hitEffectPrefab.transform.rotation;
+                GameObject effect = Instantiate(hitEffectPrefab, spawnPos, rot);
+                effect.transform.localScale = Vector3.one * hitEffectScale;
+                foreach (ParticleSystem ps in effect.GetComponentsInChildren<ParticleSystem>())
+                {
+                    var main = ps.main;
+                    if (hitEffectSize > 0f) main.startSize = hitEffectSize;
+                    if (hitEffectLifetime > 0f) main.startLifetime = hitEffectLifetime;
+                    main.startColor = new ParticleSystem.MinMaxGradient(hitEffectColorStart, hitEffectColorEnd);
+                    ps.Clear();
+                    ps.Play();
+                }
+                Destroy(effect, 2f);
+            }
+        }
+        
         // Visual feedback: flash red on all renderers
         Material flashMat = damageMaterial;
         if (flashMat == null)
@@ -137,6 +190,24 @@ public class EnemyController : MonoBehaviour
         
         // Destroy the enemy GameObject
         Destroy(gameObject);
+    }
+    
+    /// <summary>
+    /// Get spawn center for hit effects (center of character bounds, or position + up)
+    /// </summary>
+    private Vector3 GetHitEffectSpawnCenter()
+    {
+        if (enemyRenderers != null && enemyRenderers.Length > 0)
+        {
+            Bounds bounds = enemyRenderers[0].bounds;
+            for (int i = 1; i < enemyRenderers.Length; i++)
+            {
+                if (enemyRenderers[i] != null)
+                    bounds.Encapsulate(enemyRenderers[i].bounds);
+            }
+            return bounds.center;
+        }
+        return transform.position + Vector3.up * 1f;
     }
     
     /// <summary>
