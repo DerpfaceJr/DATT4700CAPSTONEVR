@@ -45,10 +45,15 @@ public class EnemyController : MonoBehaviour
     [Min(0.1f)]
     public float hitEffectScale = 2.5f;
 
+    [Header("Hit Sound")]
+    [Tooltip("Sound when hit by projectile or melee. Played from this enemy's AudioSource. If not set, uses SoundManager enemy_hit at this position.")]
+    public AudioClip hitSoundClip;
+    [Tooltip("AudioSource on this enemy for hit sound. If not set, one is used or added at runtime.")]
+    public AudioSource hitAudioSource;
+
     [Header("Special")]
     [Tooltip("If true, this enemy cannot die (used for tutorial dummies)")]
     public bool isInvulnerable = false;
-    
     private Renderer[] enemyRenderers;
     private Material[] originalMaterials;
     private static Material s_redFlashMaterial;
@@ -116,6 +121,21 @@ public class EnemyController : MonoBehaviour
         // Trigger damage event
         OnEnemyDamaged?.Invoke(this, damageAmount);
         
+        // Play hit sound (from enemy's AudioSource or SoundManager at position)
+        if (hitSoundClip != null)
+        {
+            if (hitAudioSource == null)
+                hitAudioSource = GetComponent<AudioSource>();
+            if (hitAudioSource == null)
+                hitAudioSource = gameObject.AddComponent<AudioSource>();
+            if (hitAudioSource != null)
+                hitAudioSource.PlayOneShot(hitSoundClip);
+        }
+        else if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlaySFXAtPosition("enemy_hit", GetHitEffectSpawnCenter());
+        }
+        
         // Spawn hit particle effect
         if (hitEffectPrefab != null)
         {
@@ -176,20 +196,9 @@ public class EnemyController : MonoBehaviour
 
         if (currentHealth <= 0f)
         {
-            Die();
+            OnEnemyDeath?.Invoke(this);
+            Destroy(gameObject);
         }
-    }
-    
-    /// <summary>
-    /// Handle enemy death
-    /// </summary>
-    private void Die()
-    {
-        // Trigger death event
-        OnEnemyDeath?.Invoke(this);
-        
-        // Destroy the enemy GameObject
-        Destroy(gameObject);
     }
     
     /// <summary>

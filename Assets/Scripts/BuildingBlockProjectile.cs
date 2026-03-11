@@ -11,11 +11,17 @@ public class BuildingBlockProjectile : MonoBehaviour
     [Tooltip("Minimum velocity to register as a thrown projectile")]
     public float minThrowVelocity = 1.0f;
 
-    [Tooltip("Fixed damage per hit when > 0 (like melee). When 0, uses velocity-based damage.")]
-    public float damagePerHit = 0f;
+    [Tooltip("Fixed damage per hit (enemy has 100 HP). When 0, uses velocity-based damage.")]
+    public float damagePerHit = 20f;
 
     [Tooltip("Damage multiplier when using velocity-based damage (only used when damagePerHit is 0)")]
     public float damageMultiplier = 1.0f;
+    
+    [Header("Impact Sound")]
+    [Tooltip("Sound when projectile hits wall/surface. If not set, uses SoundManager glass_ping at impact point.")]
+    public AudioClip wallHitClip;
+    [Tooltip("AudioSource on this projectile for impact sound. If not set, one is used or added at runtime.")]
+    public AudioSource impactAudioSource;
     
     private Rigidbody rb;
     private bool wasThrown = false;
@@ -135,10 +141,23 @@ public class BuildingBlockProjectile : MonoBehaviour
     
     void OnCollisionEnter(Collision collision)
     {
-        // Debug log for combat detection
         if (IsThrown())
         {
-            Debug.Log($"[BuildingBlockProjectile] {gameObject.name} hit {collision.gameObject.name} at velocity {GetVelocityMagnitude():F2} m/s");
+            // Play glass ping at impact (from projectile's AudioSource or SoundManager at contact point)
+            Vector3 contactPoint = collision.contactCount > 0 ? collision.GetContact(0).point : transform.position;
+            if (wallHitClip != null)
+            {
+                if (impactAudioSource == null)
+                    impactAudioSource = GetComponent<AudioSource>();
+                if (impactAudioSource == null)
+                    impactAudioSource = gameObject.AddComponent<AudioSource>();
+                if (impactAudioSource != null)
+                    impactAudioSource.PlayOneShot(wallHitClip);
+            }
+            else if (SoundManager.Instance != null)
+            {
+                SoundManager.Instance.PlaySFXAtPosition("glass_ping", contactPoint);
+            }
         }
     }
 }

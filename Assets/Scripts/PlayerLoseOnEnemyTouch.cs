@@ -1,15 +1,15 @@
 using UnityEngine;
 
 /// <summary>
-/// When an enemy touches the player, deal 1 damage (player has 1 HP = game over).
+/// When an enemy touches the player, deal damage.
 /// Works when the player walks into an enemy (OnControllerColliderHit) and when
 /// the enemy walks into the player (OnTriggerEnter via a body trigger collider).
 /// Attach to the same GameObject as CharacterController (e.g. VRMovementController).
 /// </summary>
 public class PlayerLoseOnEnemyTouch : MonoBehaviour
 {
-    [Tooltip("Damage dealt when an enemy touches the player (1 = instant death with 1 HP)")]
-    public float touchDamage = 1f;
+    [Tooltip("Damage dealt when an enemy touches the player (player has 100 HP)")]
+    public float touchDamage = 25f;
 
     [Tooltip("Tag used for enemy GameObjects")]
     public string enemyTag = "Enemy";

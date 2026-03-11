@@ -4,16 +4,15 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Manages player health and death
-/// Takes damage from enemy projectiles
 /// </summary>
 public class PlayerHealth : MonoBehaviour
 {
     [Header("Health Settings")]
     [Tooltip("Maximum player health")]
-    public float maxHealth = 1f;
+    public float maxHealth = 100f;
     
     [Tooltip("Current player health")]
-    public float currentHealth = 1f;
+    public float currentHealth = 100f;
     
     [Tooltip("Invulnerability duration after taking damage")]
     public float invulnerabilityDuration = 1.0f;
@@ -66,7 +65,7 @@ public class PlayerHealth : MonoBehaviour
     }
     
     /// <summary>
-    /// Take damage from an enemy projectile or other source
+    /// Take damage from any source (enemy touch, etc.)
     /// </summary>
     public void TakeDamage(float damage)
     {
@@ -116,6 +115,8 @@ public class PlayerHealth : MonoBehaviour
         
         if (actualHealed > 0)
         {
+            if (healthBar != null)
+                healthBar.fillAmount = currentHealth / maxHealth;
             Debug.Log($"PlayerHealth: Healed {actualHealed:F1}! Current health: {currentHealth:F1}/{maxHealth:F1}");
             onHealthChanged?.Invoke(currentHealth);
         }

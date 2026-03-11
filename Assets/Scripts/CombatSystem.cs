@@ -11,13 +11,14 @@ public class CombatSystem : MonoBehaviour
     /* =========================================================
      * VARIABLES REQUIRED BY EnemySpawner (DO NOT REMOVE)
      * ========================================================= */
-    [Header("Damage Settings")]
-    [Tooltip("Fallback damage multiplier for velocity-based projectile damage (when throwable has no fixed damage)")]
+    [Header("Projectile Damage (to enemies)")]
+    [Tooltip("Fallback damage multiplier for velocity-based projectile damage (when throwable has no fixed damagePerHit)")]
     public float damageMultiplier = 1f;
-    public float minDamageVelocity = 2f;
+    [Tooltip("Min projectile speed to register a hit")]
+    public float minDamageVelocity = 1.5f;
 
-    [Header("Instakill Settings")]
-    public bool instakillEnabled = true;
+    [Header("Instakill (disabled by default — use per-throwable damagePerHit instead)")]
+    public bool instakillEnabled = false;
     public float instakillMinVelocity = 1.5f;
 
     /* =========================================================
@@ -80,11 +81,19 @@ public class CombatSystem : MonoBehaviour
         // Sword handled by trigger
         if (rb.CompareTag("Sword")) return;
 
-        // Use the hitting object's speed, not relative velocity, so enemies don't die
-        // when walking into stationary throwables or weapons on the ground
+        // Healing projectiles (e.g. apple) heal player instead of damaging enemy
+        if (rb.GetComponent<HealingProjectile>() != null) return;
+
+        // Use object speed; when projectile had velocity, also consider relativeVelocity as fallback
+        // (physics may reduce velocity at impact, making hits more reliable)
         float objectSpeed = rb.linearVelocity.magnitude;
+        float relativeSpeed = collision.relativeVelocity.magnitude;
+        float effectiveSpeed = objectSpeed;
+        if (objectSpeed > 0.5f && relativeSpeed > objectSpeed)
+            effectiveSpeed = relativeSpeed;
+
         float requiredVelocity = instakillEnabled ? instakillMinVelocity : minDamageVelocity;
-        if (objectSpeed < requiredVelocity) return;
+        if (effectiveSpeed < requiredVelocity) return;
 
         // Use GetComponentInParent so colliders on child bones still find the root EnemyController
         EnemyController enemy = GetComponentInParent<EnemyController>();
@@ -93,7 +102,7 @@ public class CombatSystem : MonoBehaviour
         if (instakillEnabled)
         {
             enemy.TakeDamage(enemy.maxHealth * 100f);
-            Debug.Log($"[CombatSystem] PROJECTILE INSTAKILL (v={objectSpeed:F2})");
+            Debug.Log($"[CombatSystem] PROJECTILE INSTAKILL (v={effectiveSpeed:F2})");
         }
         else
         {
@@ -106,7 +115,7 @@ public class CombatSystem : MonoBehaviour
             else
             {
                 float mult = (projectile != null && projectile.damageMultiplier > 0f) ? projectile.damageMultiplier : damageMultiplier;
-                damage = objectSpeed * rb.mass * mult;
+                damage = effectiveSpeed * rb.mass * mult;
             }
             enemy.TakeDamage(damage);
             Debug.Log($"[CombatSystem] PROJECTILE HIT for {damage} dmg (HP: {enemy.currentHealth}/{enemy.maxHealth})");

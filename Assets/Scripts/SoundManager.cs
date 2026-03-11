@@ -28,6 +28,14 @@ public class SoundManager : MonoBehaviour
     public AudioClip gameOverClip;
     [Tooltip("Round start jingle")]
     public AudioClip roundStartClip;
+    [Tooltip("Enemy hit by projectile or melee")]
+    public AudioClip enemyHitClip;
+    [Tooltip("Projectile hits wall/surface")]
+    public AudioClip glassPingClip;
+    [Tooltip("Heavy impact (reserved for future use)")]
+    public AudioClip harshThudClip;
+    [Tooltip("Melee weapon picked up")]
+    public AudioClip woodSmallPickupClip;
 
     [Header("SFX Sources (dedicated AudioSource per sound, editable in Inspector)")]
     [Tooltip("Walking/footstep AudioSource")]
@@ -107,6 +115,10 @@ public class SoundManager : MonoBehaviour
         RegisterClip("weapon_break", weaponBreakClip);
         RegisterClip("game_over", gameOverClip);
         RegisterClip("round_start", roundStartClip);
+        RegisterClip("enemy_hit", enemyHitClip);
+        RegisterClip("glass_ping", glassPingClip);
+        RegisterClip("harsh_thud", harshThudClip);
+        RegisterClip("wood_small_pickup", woodSmallPickupClip);
 
         RegisterSource("walking", walkingSource);
         RegisterSource("player_hit", playerHitSource);
@@ -264,4 +276,13 @@ public class SoundManager : MonoBehaviour
     /// Convenience: play mini-boss spawn alert.
     /// </summary>
     public void PlayMiniBossSpawn() => PlaySFX("miniboss_spawn");
+
+    /// <summary>Play enemy hit sound (projectile/melee). Use from enemy or call PlaySFXAtPosition("enemy_hit", pos) for 3D.</summary>
+    public void PlayEnemyHit() => PlaySFX("enemy_hit");
+    /// <summary>Play glass ping (projectile hit wall). Use PlaySFXAtPosition for 3D at impact.</summary>
+    public void PlayGlassPing() => PlaySFX("glass_ping");
+    /// <summary>Play harsh thud (reserved for heavy impacts).</summary>
+    public void PlayHarshThud() => PlaySFX("harsh_thud");
+    /// <summary>Play melee weapon pickup sound.</summary>
+    public void PlayWoodSmallPickup() => PlaySFX("wood_small_pickup");
 }

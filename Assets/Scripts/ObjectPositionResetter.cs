@@ -112,6 +112,13 @@ public class ObjectPositionResetter : MonoBehaviour
         {
             TrackObject(proj.gameObject);
         }
+
+        // Find healing projectiles (e.g. apples)
+        HealingProjectile[] healingProjectiles = FindObjectsOfType<HealingProjectile>();
+        foreach (var hp in healingProjectiles)
+        {
+            TrackObject(hp.gameObject);
+        }
         
         // Find balls with ConfigureBallLikeCube component
         ConfigureBallLikeCube[] balls = FindObjectsOfType<ConfigureBallLikeCube>();

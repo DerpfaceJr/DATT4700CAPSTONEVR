@@ -12,7 +12,7 @@ public class SwordPhysicsFix : MonoBehaviour
     public bool isGrabbed;
 
     [Header("Damage")]
-    [Tooltip("Damage dealt per melee hit. Editable per weapon in the Inspector.")]
+    [Tooltip("Damage dealt per melee hit (enemy has 100 HP). Editable per weapon in the Inspector.")]
     public float damagePerHit = 25f;
 
     [Header("Blade Colliders (Triggers when held)")]
@@ -39,7 +39,9 @@ public class SwordPhysicsFix : MonoBehaviour
 
         if (isGrabbed && !wasGrabbed)
         {
-            // Grabbed
+            // Grabbed - play pickup sound
+            if (SoundManager.Instance != null)
+                SoundManager.Instance.PlayWoodSmallPickup();
             rb.isKinematic = true;
             SetBladeTriggers(true);
         }

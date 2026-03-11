@@ -26,10 +26,6 @@ public class EnemySpawner : MonoBehaviour
     [Tooltip("Attack damage multiplier for mini-boss")]
     public float miniBossDamageMultiplier = 2f;
 
-    [Header("Projectile Settings")]
-    [Tooltip("Enemy Ball prefab for enemy ranged attacks")]
-    public GameObject enemyBallPrefab;
-    
     [Tooltip("Enemy material (red for visibility) - only used if prefab not assigned")]
     public Material enemyMaterial;
     
@@ -140,15 +136,7 @@ public class EnemySpawner : MonoBehaviour
         // Scale up for visual intimidation
         boss.transform.localScale *= miniBossScaleMultiplier;
 
-        // Disable instakill on mini-boss so it takes multiple hits
-        CombatSystem cs = boss.GetComponent<CombatSystem>();
-        if (cs != null)
-        {
-            cs.instakillEnabled = false;
-            cs.damageMultiplier = 1f;
-        }
-
-        // Add mini-boss marker component
+        // Add mini-boss marker component (increases touch damage to player)
         MiniBossMarker marker = boss.AddComponent<MiniBossMarker>();
         marker.damageMultiplier = miniBossDamageMultiplier;
 
@@ -344,6 +332,8 @@ public class EnemySpawner : MonoBehaviour
             enemyController = enemy.AddComponent<EnemyController>();
             enemyController.maxHealth = 100f;
         }
+        if (enemyController.hitSoundClip == null && SoundManager.Instance != null && SoundManager.Instance.enemyHitClip != null)
+            enemyController.hitSoundClip = SoundManager.Instance.enemyHitClip;
 
         // Add visible HP bar above enemy
         EnemyHealthBar hpBar = enemy.GetComponent<EnemyHealthBar>();
@@ -352,21 +342,11 @@ public class EnemySpawner : MonoBehaviour
             hpBar = enemy.AddComponent<EnemyHealthBar>();
         }
         
-        // Ensure CombatSystem exists
+        // Ensure CombatSystem exists (damage values come from script defaults and per-throwable damagePerHit)
         CombatSystem combatSystem = enemy.GetComponent<CombatSystem>();
         if (combatSystem == null)
         {
             combatSystem = enemy.AddComponent<CombatSystem>();
-            combatSystem.damageMultiplier = 1f;
-            combatSystem.minDamageVelocity = 2f;
-            combatSystem.instakillEnabled = false; // Use per-throwable damage instead of instakill
-            combatSystem.instakillMinVelocity = 1.5f; // Prevent death from touching static objects
-        }
-        else
-        {
-            // Use per-throwable damage instead of instakill
-            combatSystem.instakillEnabled = false;
-            combatSystem.instakillMinVelocity = 1.5f; // Prevent death from touching static objects
         }
         
         // Add seek-and-attack behaviour for all enemies
