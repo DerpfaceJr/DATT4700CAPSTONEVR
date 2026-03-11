@@ -16,9 +16,14 @@ public class StartMenuActions : MonoBehaviour
     [Tooltip("Assign in Inspector to wire Quit button, or leave empty to auto-find.")]
     public Button quitButton;
 
+    [Tooltip("Assign in Inspector to wire Help button, or leave empty to auto-find.")]
+    public Button helpButton;
+
     [Header("Scene to load")]
     [Tooltip("Scene name to load when Start is clicked (must be in Build Settings). Default: SimpleArea")]
     public string gameSceneName = "SimpleArea";
+
+    public string helpSceneName = "HelpArea";
 
     [Tooltip("If true, use build index 1 instead of scene name")]
     public bool useBuildIndex = true;
@@ -46,7 +51,19 @@ public class StartMenuActions : MonoBehaviour
         }
         else
             Debug.LogWarning("[StartMenuActions] Quit Button not found.");
+
+        if (helpButton == null)
+            helpButton = FindButton("Help Button") ?? FindButtonByPath("Canvas/Menu/Help Button");
+        if (helpButton != null)
+        {
+            helpButton.onClick.RemoveAllListeners();
+            helpButton.onClick.AddListener(OnHelpClicked);
+            Debug.Log("[StartMenuActions] Help button onClick wired to OnQuitClicked.");
+        }
+        else
+            Debug.LogWarning("[StartMenuActions] Help Button not found.");
     }
+
 
     private Button FindButton(string name)
     {
@@ -73,8 +90,8 @@ public class StartMenuActions : MonoBehaviour
     {
         if (useBuildIndex)
         {
-            SceneManager.LoadScene(1);
-            Debug.Log("[StartMenuActions] Loading scene at build index 1 (SimpleArea).");
+            SceneManager.LoadScene(2);
+            Debug.Log("[StartMenuActions] Loading scene at build index 2 (SimpleArea).");
         }
         else
         {
@@ -82,6 +99,11 @@ public class StartMenuActions : MonoBehaviour
             Debug.Log($"[StartMenuActions] Loading scene: {gameSceneName}");
         }
     }
+
+    public void OnHelpClicked()
+    {
+        SceneManager.LoadScene(helpSceneName);
+    }   
 
     /// <summary>Called when Quit button is clicked. Exits the application (or stops Play in Editor).</summary>
     public void OnQuitClicked()
