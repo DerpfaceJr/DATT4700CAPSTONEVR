@@ -1,37 +1,60 @@
 using UnityEngine;
 
 /// <summary>
-/// Locks a minimap icon sprite to always face straight up (for top-down minimap camera)
-/// and maintains consistent world-space scale regardless of parent transform changes.
-/// Prevents icon distortion when the parent weapon is rotated, grabbed, or thrown.
+/// Keeps a minimap icon independent of its weapon - reparents to world space so the weapon's
+/// transform (rotation, scale, grab) never affects the icon. Icon always has world X=90 Y=0 Z=0
+/// and uniform scale.
 /// </summary>
 public class LockIconRotation : MonoBehaviour
 {
-    [Tooltip("World rotation for the icon. (90,0,0) = faces up for a top-down camera.")]
-    public Vector3 targetEulerAngles = new Vector3(90f, 0f, 0f);
+    private static readonly Quaternion LockedWorldRotation = Quaternion.Euler(90f, 0f, 0f);
 
-    [Tooltip("Desired world-space uniform scale for the icon. 0 = auto-detect from Start().")]
+    [Tooltip("World-space uniform scale. 0 = auto from Start.")]
     public float worldScale = 0f;
 
-    private Vector3 initialLossyScale;
+    [Tooltip("Height offset above weapon position.")]
+    public float heightOffset = 0.5f;
+
+    private Transform weaponParent;
+    private bool reparented;
 
     void Start()
     {
-        initialLossyScale = transform.lossyScale;
+        weaponParent = transform.parent;
+        if (weaponParent == null) return;
+
         if (worldScale <= 0f)
-            worldScale = Mathf.Max(Mathf.Abs(initialLossyScale.x), 0.01f);
+        {
+            Vector3 ls = transform.lossyScale;
+            worldScale = Mathf.Max(Mathf.Abs(ls.x), Mathf.Abs(ls.y), Mathf.Abs(ls.z), 0.01f);
+        }
+
+        ReparentToWorld();
+    }
+
+    void OnEnable()
+    {
+        if (reparented && weaponParent != null)
+            ReparentToWorld();
     }
 
     void LateUpdate()
     {
-        // Lock world rotation so icon always faces the minimap camera
-        transform.rotation = Quaternion.Euler(targetEulerAngles);
+        if (weaponParent == null) return;
 
-        // Compensate for parent scale changes to keep icon size consistent
-        Vector3 parentScale = transform.parent != null ? transform.parent.lossyScale : Vector3.one;
-        float sx = Mathf.Abs(parentScale.x) > 0.001f ? worldScale / Mathf.Abs(parentScale.x) : worldScale;
-        float sy = Mathf.Abs(parentScale.y) > 0.001f ? worldScale / Mathf.Abs(parentScale.y) : worldScale;
-        float sz = Mathf.Abs(parentScale.z) > 0.001f ? worldScale / Mathf.Abs(parentScale.z) : worldScale;
-        transform.localScale = new Vector3(sx, sy, sz);
+        transform.position = weaponParent.position + Vector3.up * heightOffset;
+        transform.rotation = LockedWorldRotation;
+        transform.localScale = new Vector3(worldScale, worldScale, worldScale);
+    }
+
+    private void ReparentToWorld()
+    {
+        GameObject container = GameObject.Find("MeleeIconContainer");
+        if (container == null)
+        {
+            container = new GameObject("MeleeIconContainer");
+        }
+        transform.SetParent(container.transform, true);
+        reparented = true;
     }
 }

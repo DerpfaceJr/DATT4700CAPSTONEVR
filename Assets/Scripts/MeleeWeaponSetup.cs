@@ -106,7 +106,8 @@ public class MeleeWeaponSetup : MonoBehaviour
         {
             durability.iconRenderer = existingIcon;
 
-            // Ensure icon has LockIconRotation
+            // Ensure icon has LockIconRotation and correct world rotation (X90 Y0 Z0)
+            existingIcon.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             LockIconRotation lockRot = existingIcon.GetComponent<LockIconRotation>();
             if (lockRot == null)
                 existingIcon.gameObject.AddComponent<LockIconRotation>();
@@ -120,6 +121,7 @@ public class MeleeWeaponSetup : MonoBehaviour
         GameObject iconObj = new GameObject("MinimapIcon");
         iconObj.transform.SetParent(weapon.transform, false);
         iconObj.transform.localPosition = Vector3.up * 0.5f;
+        iconObj.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
         SpriteRenderer sr2 = iconObj.AddComponent<SpriteRenderer>();
         sr2.sprite = meleeIconSprite;
