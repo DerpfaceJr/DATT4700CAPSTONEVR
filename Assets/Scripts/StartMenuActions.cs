@@ -21,7 +21,7 @@ public class StartMenuActions : MonoBehaviour
 
     [Header("Scene to load")]
     [Tooltip("Scene name to load when Start is clicked (must be in Build Settings). Default: SimpleArea")]
-    public string gameSceneName = "SimpleArea";
+    public string gameSceneName = "SlideArea";
 
     public string helpSceneName = "HelpArea";
 
