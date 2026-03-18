@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections;
 using System.Collections.Generic;
 using System;
 using TMPro;
@@ -38,6 +39,10 @@ public class RoundManager : MonoBehaviour
     
     [Tooltip("Offset from player position when spawning new enemy (round 2+); avoids spawning inside player")]
     public float spawnOffsetFromPlayer = 1.5f;
+    
+    [Tooltip("Delay before first respawn (round 1) to let VR tracking stabilize. Set to 0 to disable.")]
+    [Range(0f, 2f)]
+    public float initialRespawnDelay = 0.5f;
     
     [Header("Audio")]
     [Tooltip("AudioSource for SFX (e.g. on Audio Manager). Auto-finds GameObject named 'AudioManager' if not set.")]
@@ -206,10 +211,17 @@ public class RoundManager : MonoBehaviour
             Debug.Log($"=== Round {currentRound} Started ===");
         }
         
-        // Respawn player at random location
+        // Respawn player at random location (delay on round 1 to let VR tracking stabilize)
         if (playerRespawner != null)
         {
-            playerRespawner.RespawnPlayer();
+            if (roundNumber == 1 && initialRespawnDelay > 0)
+            {
+                StartCoroutine(DelayedRespawn(initialRespawnDelay));
+            }
+            else
+            {
+                playerRespawner.RespawnPlayer();
+            }
         }
         
         // Reset throwable objects and weapons to starting positions
@@ -369,6 +381,18 @@ public class RoundManager : MonoBehaviour
 
         // Trigger round start event
         OnRoundStart?.Invoke(currentRound);
+    }
+    
+    /// <summary>
+    /// Delays respawn to let VR tracking stabilize on scene load.
+    /// </summary>
+    private IEnumerator DelayedRespawn(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (playerRespawner != null)
+        {
+            playerRespawner.RespawnPlayer();
+        }
     }
     
     /// <summary>

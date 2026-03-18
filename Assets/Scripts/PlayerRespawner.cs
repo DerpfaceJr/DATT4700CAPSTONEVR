@@ -10,10 +10,11 @@ public class PlayerRespawner : MonoBehaviour
     [Tooltip("Minimum distance from walls")]
     public float wallPadding = 1f;
     
-    [Tooltip("Ground level Y position")]
+    [Tooltip("Ground level Y position (floor level for VR rig - headset adds head height automatically)")]
     public float groundLevel = 0f;
     
-    [Tooltip("Player height offset from ground")]
+    [Tooltip("Legacy: was used for spawn Y. VR rig should be at floor level; headset provides head height. Kept for raycast fallback only.")]
+    [HideInInspector]
     public float playerHeightOffset = 1.6f;
     
     [Tooltip("Maximum attempts to find valid spawn location")]
@@ -136,8 +137,8 @@ public class PlayerRespawner : MonoBehaviour
         else
         {
             Debug.LogWarning("PlayerRespawner: Could not find valid spawn position!");
-            // Fallback to center
-            Vector3 fallbackPos = new Vector3(0f, groundLevel + playerHeightOffset, 0f);
+            // Fallback to center (floor level - VR headset adds head height)
+            Vector3 fallbackPos = new Vector3(0f, groundLevel, 0f);
             xrOrigin.position = fallbackPos;
             RecordSpawnLocation(fallbackPos);
         }
@@ -150,10 +151,10 @@ public class PlayerRespawner : MonoBehaviour
     {
         for (int i = 0; i < maxSpawnAttempts; i++)
         {
-            // Generate random position within bounds
+            // Generate random position within bounds (Y = floor level; VR headset adds head height)
             Vector3 randomPos = new Vector3(
                 Random.Range(spawnBounds.min.x, spawnBounds.max.x),
-                groundLevel + playerHeightOffset,
+                groundLevel,
                 Random.Range(spawnBounds.min.z, spawnBounds.max.z)
             );
             
@@ -170,7 +171,7 @@ public class PlayerRespawner : MonoBehaviour
         {
             Vector3 randomPos = new Vector3(
                 Random.Range(spawnBounds.min.x, spawnBounds.max.x),
-                groundLevel + playerHeightOffset,
+                groundLevel,
                 Random.Range(spawnBounds.min.z, spawnBounds.max.z)
             );
             
@@ -181,8 +182,8 @@ public class PlayerRespawner : MonoBehaviour
             }
         }
         
-        // Final fallback to center
-        return new Vector3(0f, groundLevel + playerHeightOffset, 0f);
+        // Final fallback to center (floor level)
+        return new Vector3(0f, groundLevel, 0f);
     }
     
     /// <summary>
