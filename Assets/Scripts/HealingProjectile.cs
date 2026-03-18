@@ -18,8 +18,16 @@ public class HealingProjectile : MonoBehaviour
     [Tooltip("Delay before destroying the object after healing (lets sound/particle play)")]
     public float destroyDelay = 0.15f;
 
-    [Tooltip("Particle effect prefab to spawn when the apple breaks. If null, no particles.")]
+    [Tooltip("Particle effect prefab to spawn when the apple breaks (e.g. HitParticle). If null, no particles.")]
     public GameObject breakEffectPrefab;
+
+    [Tooltip("Number of particle instances to spawn (creates a fuller burst)")]
+    [Min(1)]
+    public int healEffectCount = 2;
+
+    [Tooltip("Healing particle color range - random between start and end (green tones)")]
+    public Color healEffectColorStart = new Color(0.3f, 1f, 0.4f, 1f);
+    public Color healEffectColorEnd = new Color(0.2f, 0.8f, 0.3f, 1f);
 
     [Header("Impact Sound")]
     [Tooltip("Sound when healing projectile hits enemy. If not set, uses SoundManager glass_ping.")]
@@ -131,11 +139,26 @@ public class HealingProjectile : MonoBehaviour
             SoundManager.Instance.PlaySFXAtPosition("glass_ping", contactPoint);
         }
 
-        // Spawn break particle effect
+        // Spawn healing burst particle effect (green)
         if (breakEffectPrefab != null)
         {
-            GameObject fx = Instantiate(breakEffectPrefab, contactPoint, Quaternion.identity);
-            Destroy(fx, 3f);
+            for (int i = 0; i < healEffectCount; i++)
+            {
+                Vector3 offset = new Vector3(
+                    UnityEngine.Random.Range(-0.15f, 0.15f),
+                    UnityEngine.Random.Range(-0.1f, 0.2f),
+                    UnityEngine.Random.Range(-0.15f, 0.15f));
+                Vector3 spawnPos = contactPoint + offset;
+                GameObject fx = Instantiate(breakEffectPrefab, spawnPos, breakEffectPrefab.transform.rotation);
+                foreach (ParticleSystem ps in fx.GetComponentsInChildren<ParticleSystem>())
+                {
+                    var main = ps.main;
+                    main.startColor = new ParticleSystem.MinMaxGradient(healEffectColorStart, healEffectColorEnd);
+                    ps.Clear();
+                    ps.Play();
+                }
+                Destroy(fx, 3f);
+            }
         }
 
         // Destroy the apple
