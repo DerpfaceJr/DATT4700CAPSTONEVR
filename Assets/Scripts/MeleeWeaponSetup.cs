@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 
 /// <summary>
 /// Auto-configures MeleeDurability on all melee weapons in the scene that have SwordPhysicsFix
@@ -30,7 +32,7 @@ public class MeleeWeaponSetup : MonoBehaviour
     [Tooltip("Size of minimap icon")]
     public float iconSize = 0.5f;
 
-    void Start()
+    void Awake()
     {
         SetupAllMeleeWeapons();
     }
@@ -48,6 +50,7 @@ public class MeleeWeaponSetup : MonoBehaviour
                 // Already has durability: ensure icon setup and update hitCountMax if too low
                 EnsureMinimapIcon(weapon.gameObject, durability);
                 ApplyHitCountMax(weapon.gameObject.name, durability);
+                EnsureDurabilityUI(durability);
                 continue;
             }
 
@@ -59,6 +62,9 @@ public class MeleeWeaponSetup : MonoBehaviour
 
             // Setup minimap icon
             EnsureMinimapIcon(weapon.gameObject, durability);
+
+            // Wire up player canvas durability UI
+            EnsureDurabilityUI(durability);
 
             setupCount++;
             Debug.Log($"[MeleeWeaponSetup] Added MeleeDurability to '{weapon.gameObject.name}' (maxHits={durability.hitCountMax})");
@@ -133,5 +139,60 @@ public class MeleeWeaponSetup : MonoBehaviour
         lockRotNew.worldScale = iconSize;
 
         durability.iconRenderer = sr2;
+    }
+
+    /// <summary>
+    /// Wire the shared player canvas durability UI (weaponIcon, durabilityText) to this weapon
+    /// if not already assigned. Finds "Weapon Icon" (Image) and "Durability Indicator" (TextMeshProUGUI).
+    /// </summary>
+    private void EnsureDurabilityUI(MeleeDurability durability)
+    {
+        if (durability.weaponIcon != null && durability.durabilityText != null)
+            return;
+
+        // Find Player Canvas -> Weapon Icon (Image) and Durability Indicator (TextMeshProUGUI)
+        GameObject playerCanvas = GameObject.Find("Player Canvas");
+        if (playerCanvas == null) return;
+
+        Transform weaponIconT = playerCanvas.transform.Find("Weapon Icon");
+        if (weaponIconT == null) return;
+
+        Image icon = weaponIconT.GetComponent<Image>();
+        if (icon == null) icon = weaponIconT.GetComponentInChildren<Image>();
+
+        Transform durabilityT = weaponIconT.Find("Durability Indicator");
+        TextMeshProUGUI text = null;
+        if (durabilityT != null)
+            text = durabilityT.GetComponent<TextMeshProUGUI>();
+        if (text == null)
+            text = weaponIconT.GetComponentInChildren<TextMeshProUGUI>();
+
+        if (durability.weaponIcon == null && icon != null)
+            durability.weaponIcon = icon;
+        if (durability.durabilityText == null && text != null)
+            durability.durabilityText = text;
+
+        // Assign weaponUISprite if missing (from another weapon or minimap icon)
+        if (durability.weaponUISprite == null)
+        {
+            MeleeDurability[] all = FindObjectsOfType<MeleeDurability>();
+            foreach (MeleeDurability d in all)
+            {
+                if (d.weaponUISprite != null)
+                {
+                    durability.weaponUISprite = d.weaponUISprite;
+                    break;
+                }
+                if (d.iconRenderer != null && d.iconRenderer.sprite != null)
+                {
+                    durability.weaponUISprite = d.iconRenderer.sprite;
+                    break;
+                }
+            }
+        }
+
+        // Apply sprite to icon now (in case MeleeDurability.Start already ran)
+        if (durability.weaponIcon != null && durability.weaponUISprite != null)
+            durability.weaponIcon.sprite = durability.weaponUISprite;
     }
 }

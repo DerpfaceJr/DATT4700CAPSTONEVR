@@ -88,9 +88,22 @@ public class MeleeDurability : MonoBehaviour
             if (iconRenderer != null)
                 iconRenderer.enabled = true;
 
-            // Hide durability indicator
+            // Only hide durability indicator if NO weapon is grabbed
+            // (otherwise another weapon's Update would hide it after we show it)
             if (weaponIcon != null)
-                weaponIcon.gameObject.SetActive(false);
+            {
+                bool anyOtherGrabbed = false;
+                foreach (var d in FindObjectsOfType<MeleeDurability>())
+                {
+                    if (d != this && d.meleeObj != null && d.meleeObj.isGrabbed)
+                    {
+                        anyOtherGrabbed = true;
+                        break;
+                    }
+                }
+                if (!anyOtherGrabbed)
+                    weaponIcon.gameObject.SetActive(false);
+            }
         }
     }
 
