@@ -196,7 +196,7 @@ public class HelpSlideshow : MonoBehaviour
         if (startButton == null)
         {
             float p = 0.015f;
-            startButton = MakeButton("StartGameBtn", navBar, "Start Game  \u25B6", 0.70f + p, p, 1f - p, 1f - p, startButtonColor);
+            startButton = MakeButton("StartGameBtn", navBar, "Start  \u25B6", 0.70f + p, p, 1f - p, 1f - p, startButtonColor);
         }
         startButton.gameObject.SetActive(false);
     }
@@ -254,6 +254,15 @@ public class HelpSlideshow : MonoBehaviour
 
         bool isFirst = currentIndex == 0;
         bool isLast = currentIndex >= slides.Length - 1;
+
+        if(currentIndex == 0)
+        {
+            prevButton.gameObject.SetActive(false);
+        }
+        else
+        {
+            prevButton.gameObject.SetActive(true);
+        }
 
         prevButton.interactable = !isFirst;
         TintButton(prevButton, isFirst ? disabledColor : buttonColor);
