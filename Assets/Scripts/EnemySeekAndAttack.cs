@@ -49,6 +49,17 @@ public class EnemySeekAndAttack : MonoBehaviour
     public float attackLungeSpeed = 1.2f;
     [Tooltip("Max distance to lunge toward player during attack")]
     public float attackLungeMaxDistance = 0.6f;
+    [Tooltip("Do not start attack if |vertical delta| to aim point exceeds this")]
+    public float maxAttackVerticalDelta = 2f;
+    [Tooltip("World position used for attack range and lunge aim (e.g. player body). Falls back to playerTarget.")]
+    public Transform attackRangeReference;
+
+    [Header("Animator sync")]
+    [Tooltip("End IsAttacking when animator leaves the attack state (add Attack state name to match your controller)")]
+    public bool syncAttackEndWithAnimator;
+    [Tooltip("State name to match on animatorLayer (sub-state name is enough for IsName)")]
+    public string attackAnimatorStateName = "Attack";
+    public int attackAnimatorLayer;
 
     /// <summary>True while attack animation is playing. Health is only deducted when this is true and enemy touches player.</summary>
     public bool IsAttacking { get; private set; }
@@ -70,8 +81,13 @@ public class EnemySeekAndAttack : MonoBehaviour
     private const float MIN_VERTICAL_UPDATE_DISTANCE = 0.6f;
     private const float WARP_RETRY_INTERVAL = 1f;
     private const float NAVMESH_SAMPLE_RADIUS = 5f;
+    /// <summary>Child under XR rig / camera rig — created in scenes for attack range aim (chest proxy below HMD).</summary>
+    private const string AttackAimReferenceName = "AttackAimReference";
 
     private EnemyAnimatorController animController;
+    private EnemyAttackDamageWindow damageWindow;
+    private Animator enemyAnimator;
+    private int attackAnimatorStateHash;
     private float attackStartTime = -999f;
     private float lastAttackEndTime = -999f;
     private Vector3 attackStartPosition;
@@ -89,6 +105,11 @@ public class EnemySeekAndAttack : MonoBehaviour
         CacheFloorRef();
         animController = GetComponent<EnemyAnimatorController>();
         if (animController == null) animController = GetComponentInChildren<EnemyAnimatorController>();
+
+        damageWindow = GetComponentInChildren<EnemyAttackDamageWindow>();
+        enemyAnimator = GetComponentInChildren<Animator>();
+        if (!string.IsNullOrEmpty(attackAnimatorStateName))
+            attackAnimatorStateHash = Animator.StringToHash(attackAnimatorStateName);
 
         if (useNavMesh)
         {
@@ -221,13 +242,40 @@ public class EnemySeekAndAttack : MonoBehaviour
 
     private void EnsurePlayerTarget()
     {
-        if (playerTarget != null) return;
+        if (playerTarget != null)
+        {
+            EnsureAttackRangeReference();
+            return;
+        }
         GameObject xr = GameObject.Find("XR Origin");
         if (xr == null) xr = GameObject.Find("[BuildingBlock] Camera Rig");
-        if (xr != null) { playerTarget = xr.transform; return; }
+        if (xr != null) { playerTarget = xr.transform; EnsureAttackRangeReference(); return; }
         GameObject player = GameObject.FindGameObjectWithTag("Player");
-        if (player != null) { playerTarget = player.transform; return; }
+        if (player != null) { playerTarget = player.transform; EnsureAttackRangeReference(); return; }
         if (Camera.main != null) playerTarget = Camera.main.transform;
+        EnsureAttackRangeReference();
+    }
+
+    /// <summary>
+    /// If attackRangeReference is unset, use a child named AttackAimReference under the rig (place under CenterEyeAnchor, local Y ~ -0.45).
+    /// </summary>
+    private void EnsureAttackRangeReference()
+    {
+        if (attackRangeReference != null) return;
+        if (playerTarget == null) return;
+        attackRangeReference = FindChildRecursive(playerTarget, AttackAimReferenceName);
+    }
+
+    private static Transform FindChildRecursive(Transform parent, string childName)
+    {
+        if (parent == null) return null;
+        foreach (Transform t in parent)
+        {
+            if (t.name == childName) return t;
+            Transform nested = FindChildRecursive(t, childName);
+            if (nested != null) return nested;
+        }
+        return null;
     }
 
     private void CalculateMapBounds()
@@ -276,59 +324,55 @@ public class EnemySeekAndAttack : MonoBehaviour
             return;
         }
 
+        EnsureAttackRangeReference();
+
         Vector3 toPlayer = playerTarget.position - transform.position;
         Vector3 toPlayerFlat = toPlayer;
         toPlayerFlat.y = 0f;
         float distanceFlat = toPlayerFlat.magnitude;
 
-        // Attack state: end attack when duration elapsed
+        Vector3 playerAimPos = attackRangeReference != null ? attackRangeReference.position : playerTarget.position;
+        Vector3 toAim = playerAimPos - transform.position;
+        Vector3 toAimFlat = toAim;
+        toAimFlat.y = 0f;
+        float distanceToAimFlat = toAimFlat.magnitude;
+
+        // Attack state: end attack when duration elapsed or animator leaves attack state
         if (IsAttacking)
         {
-            if (Time.time - attackStartTime >= attackDuration)
+            bool endByTime = Time.time - attackStartTime >= attackDuration;
+            bool endByAnim = syncAttackEndWithAnimator && ShouldEndAttackFromAnimator();
+            if (endByTime || endByAnim)
             {
-                IsAttacking = false;
-                lastAttackEndTime = Time.time;
-                if (animController != null) animController.SetAttackTrigger(false);
+                EndAttackSequence();
             }
             else
             {
                 if (navAgent != null && navAgent.enabled) navAgent.speed = 0f;
-                if (toPlayerFlat.sqrMagnitude > 0.01f)
+                if (toAimFlat.sqrMagnitude > 0.01f)
                 {
-                    transform.rotation = Quaternion.Euler(0f, Quaternion.LookRotation(toPlayerFlat).eulerAngles.y, 0f);
-                    Vector3 dir = toPlayerFlat.normalized;
+                    transform.rotation = Quaternion.Euler(0f, Quaternion.LookRotation(toAimFlat).eulerAngles.y, 0f);
+                    Vector3 dir = toAimFlat.normalized;
                     float distFromStart = Vector3.Distance(transform.position, attackStartPosition);
                     float remainingLunge = Mathf.Max(0f, attackLungeMaxDistance - distFromStart);
-                    float distToPlayer = toPlayerFlat.magnitude;
-                    float moveDist = Mathf.Min(attackLungeSpeed * Time.fixedDeltaTime, remainingLunge, Mathf.Max(0f, distToPlayer - 0.15f));
+                    float distToAim = toAimFlat.magnitude;
+                    float moveDist = Mathf.Min(attackLungeSpeed * Time.fixedDeltaTime, remainingLunge, Mathf.Max(0f, distToAim - 0.15f));
                     if (moveDist > 0.001f)
                     {
-                        Vector3 newPos = transform.position + dir * moveDist;
+                        Vector3 worldDelta = dir * moveDist;
                         if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
                         {
-                            NavMeshHit hit;
-                            if (NavMesh.SamplePosition(newPos, out hit, 2f, NavMesh.AllAreas))
-                            {
-                                Vector3 rootPos;
-                                if (floorRef != null)
-                                {
-                                    Vector3 feetLevel = hit.position + Vector3.up * floorRefToFeetOffset;
-                                    rootPos = feetLevel + (transform.position - floorRef.position);
-                                }
-                                else
-                                    rootPos = hit.position;
-                                navAgent.Warp(rootPos);
-                            }
+                            navAgent.Move(worldDelta);
                         }
                         else if (rb != null)
                         {
-                            Vector3 newPosRb = transform.position + dir * moveDist;
+                            Vector3 newPosRb = transform.position + worldDelta;
                             if (floorRef != null) SnapRootToGroundUsingFloorRef(ref newPosRb);
                             rb.MovePosition(newPosRb);
                         }
                         else
                         {
-                            transform.position = newPos;
+                            transform.position = transform.position + worldDelta;
                         }
                     }
                 }
@@ -338,15 +382,16 @@ public class EnemySeekAndAttack : MonoBehaviour
         }
 
         // Start attack when in range (and not on cooldown)
-        if (!IsAttacking && distanceFlat <= attackRange && Time.time - lastAttackEndTime >= attackCooldown)
+        if (!IsAttacking && distanceToAimFlat <= attackRange && Mathf.Abs(toAim.y) <= maxAttackVerticalDelta
+            && Time.time - lastAttackEndTime >= attackCooldown)
         {
             IsAttacking = true;
             attackStartTime = Time.time;
             attackStartPosition = transform.position;
             if (animController != null) animController.SetAttackTrigger(true);
             if (navAgent != null && navAgent.enabled) navAgent.speed = 0f;
-            if (toPlayerFlat.sqrMagnitude > 0.01f)
-                transform.rotation = Quaternion.Euler(0f, Quaternion.LookRotation(toPlayerFlat).eulerAngles.y, 0f);
+            if (toAimFlat.sqrMagnitude > 0.01f)
+                transform.rotation = Quaternion.Euler(0f, Quaternion.LookRotation(toAimFlat).eulerAngles.y, 0f);
             ForceUpright();
             return;
         }
@@ -474,5 +519,33 @@ public class EnemySeekAndAttack : MonoBehaviour
             pos.z = Mathf.Clamp(pos.z, boundsMinZ, boundsMaxZ);
             transform.position = pos;
         }
+    }
+
+    /// <summary>Attach a StateMachineBehaviour on the Attack state OnStateExit to call this for tight sync.</summary>
+    public void NotifyAnimatorLeftAttackState()
+    {
+        EndAttackSequence();
+    }
+
+    private void EndAttackSequence()
+    {
+        if (damageWindow != null)
+            damageWindow.CloseDamageWindow();
+        if (!IsAttacking)
+            return;
+        IsAttacking = false;
+        lastAttackEndTime = Time.time;
+        if (animController != null) animController.SetAttackTrigger(false);
+    }
+
+    private bool ShouldEndAttackFromAnimator()
+    {
+        if (!syncAttackEndWithAnimator || enemyAnimator == null) return false;
+        if (Time.time - attackStartTime < 0.12f) return false;
+        AnimatorStateInfo info = enemyAnimator.GetCurrentAnimatorStateInfo(attackAnimatorLayer);
+        bool inAttack = info.IsName(attackAnimatorStateName);
+        if (!inAttack && attackAnimatorStateHash != 0)
+            inAttack = info.shortNameHash == attackAnimatorStateHash;
+        return !inAttack;
     }
 }

@@ -302,6 +302,7 @@ public class EnemySpawner : MonoBehaviour
         // Ensure enemy root has a non-trigger body collider so when they walk into the player,
         // the player's trigger detects them (PlayerLoseOnEnemyTouch). Prefabs may have no root collider or only triggers.
         EnsureEnemyBodyCollider(enemy, hasRiggedCharacter);
+        EnsureEnemyAttackDamageWindow(enemy, hasRiggedCharacter);
 
         // Ensure enemy is red (if using prefab, check material)
         Renderer renderer = enemy.GetComponent<Renderer>();
@@ -403,7 +404,76 @@ public class EnemySpawner : MonoBehaviour
             body.center = Vector3.zero;
         }
     }
-    
+
+    /// <summary>
+    /// Ensures a strike trigger volume and EnemyAttackDamageWindow exist for gated contact damage.
+    /// </summary>
+    private void EnsureEnemyAttackDamageWindow(GameObject enemy, bool isRigged)
+    {
+        EnemyAttackDamageWindow window = enemy.GetComponent<EnemyAttackDamageWindow>();
+        if (window == null)
+            window = enemy.AddComponent<EnemyAttackDamageWindow>();
+
+        bool createdNewVolume = false;
+
+        if (window.attackDamageCollider != null)
+        {
+            Animator a = enemy.GetComponentInChildren<Animator>();
+            if (a != null && window.animator == null)
+                window.animator = a;
+            return;
+        }
+
+        Transform existing = enemy.transform.Find("AttackDamageVolume");
+        if (existing != null)
+        {
+            Collider c = existing.GetComponent<Collider>();
+            if (c != null)
+            {
+                window.attackDamageCollider = c;
+                c.isTrigger = true;
+                c.enabled = false;
+            }
+            else
+            {
+                BoxCollider box = existing.gameObject.AddComponent<BoxCollider>();
+                box.isTrigger = true;
+                box.size = isRigged ? new Vector3(0.55f, 0.4f, 0.52f) : new Vector3(0.62f, 0.52f, 0.55f);
+                box.center = Vector3.zero;
+                box.enabled = false;
+                window.attackDamageCollider = box;
+                createdNewVolume = true;
+            }
+        }
+
+        if (window.attackDamageCollider == null)
+        {
+            GameObject vol = new GameObject("AttackDamageVolume");
+            vol.transform.SetParent(enemy.transform, false);
+            vol.layer = enemy.layer;
+            float forward = isRigged ? 0.62f : 0.48f;
+            float height = isRigged ? 1.05f : 0.52f;
+            vol.transform.localPosition = new Vector3(0f, height, forward);
+            vol.transform.localRotation = Quaternion.identity;
+            BoxCollider box = vol.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.size = isRigged ? new Vector3(0.55f, 0.4f, 0.52f) : new Vector3(0.62f, 0.52f, 0.55f);
+            box.center = Vector3.zero;
+            box.enabled = false;
+            window.attackDamageCollider = box;
+            createdNewVolume = true;
+        }
+
+        window.contactMode = EnemyContactDamageMode.AttackWindowOnly;
+        Animator anim = enemy.GetComponentInChildren<Animator>();
+        if (anim != null)
+        {
+            window.animator = anim;
+            if (createdNewVolume)
+                window.useNormalizedTimeFallback = true;
+        }
+    }
+
     /// <summary>
     /// Get spawn position for an enemy
     /// </summary>

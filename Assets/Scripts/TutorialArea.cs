@@ -121,6 +121,15 @@ public class TutorialArea : MonoBehaviour
         if (agent != null)
             agent.enabled = false;
 
+        // Touch damage without attack animation: explicit policy (not "missing EnemySeekAndAttack")
+        EnemyAttackDamageWindow dmgWindow = dummyEnemy.GetComponent<EnemyAttackDamageWindow>();
+        if (dmgWindow == null)
+            dmgWindow = dummyEnemy.AddComponent<EnemyAttackDamageWindow>();
+        dmgWindow.contactMode = EnemyContactDamageMode.AnyContact;
+        dmgWindow.useNormalizedTimeFallback = false;
+        if (dmgWindow.attackDamageCollider != null)
+            dmgWindow.attackDamageCollider.enabled = false;
+
         // Floating label
         CreateDummyLabel(dummyEnemy.transform);
 
