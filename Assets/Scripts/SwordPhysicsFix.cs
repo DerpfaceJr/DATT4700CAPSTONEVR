@@ -12,8 +12,8 @@ public class SwordPhysicsFix : MonoBehaviour
     public bool isGrabbed;
 
     [Header("Damage")]
-    [Tooltip("Damage dealt per melee hit (enemy has 100 HP). Editable per weapon in the Inspector.")]
-    public float damagePerHit = 25f;
+    [Tooltip("Damage per melee hit. Default 34 ≈ 3 hits to kill a 100 HP enemy. Editable per weapon in the Inspector.")]
+    public float damagePerHit = 34f;
 
     [Header("Blade Colliders (Triggers when held)")]
     [Tooltip("ONLY colliders in this list will be triggers when the sword is held")]

@@ -17,7 +17,7 @@ public class MeleeWeaponSetup : MonoBehaviour
 {
     [Header("Durability Defaults")]
     [Tooltip("Default max hits before weapon breaks (adjustable per weapon type)")]
-    public int defaultMaxHits = 5;
+    public int defaultMaxHits = 10;
 
     [Tooltip("Respawn delay after breaking")]
     public float respawnDelay = 3f;
@@ -78,20 +78,20 @@ public class MeleeWeaponSetup : MonoBehaviour
 
     private void ApplyHitCountMax(string weaponName, MeleeDurability durability)
     {
-        // ~4 hits to kill 100 HP enemy at 25 dmg. hitCountMax allows 2–3 kills per weapon.
+        // ~3 melee hits to kill 100 HP enemy at 34 dmg. Doubled durability vs prior tuning for more kills per weapon.
         string name = weaponName.ToLower();
         if (name.Contains("pickaxe"))
-            durability.hitCountMax = 12;
+            durability.hitCountMax = 24;
         else if (name.Contains("crowbar"))
-            durability.hitCountMax = 14;
+            durability.hitCountMax = 28;
         else if (name.Contains("wrench"))
-            durability.hitCountMax = 12;
+            durability.hitCountMax = 24;
         else if (name.Contains("mallet") || name.Contains("hammer"))
-            durability.hitCountMax = 10;
+            durability.hitCountMax = 20;
         else if (name.Contains("sword"))
-            durability.hitCountMax = 16;
+            durability.hitCountMax = 32;
         else
-            durability.hitCountMax = Mathf.Max(defaultMaxHits, 12);
+            durability.hitCountMax = Mathf.Max(defaultMaxHits, 24);
     }
 
     private void EnsureMinimapIcon(GameObject weapon, MeleeDurability durability)

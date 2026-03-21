@@ -11,8 +11,8 @@ public class BuildingBlockProjectile : MonoBehaviour
     [Tooltip("Minimum velocity to register as a thrown projectile")]
     public float minThrowVelocity = 1.0f;
 
-    [Tooltip("Fixed damage per hit (enemy has 100 HP). When 0, uses velocity-based damage.")]
-    public float damagePerHit = 20f;
+    [Tooltip("Fixed damage per hit (25 = 4 hits vs 100 HP). When 0, uses velocity-based damage.")]
+    public float damagePerHit = 25f;
 
     [Tooltip("Damage multiplier when using velocity-based damage (only used when damagePerHit is 0)")]
     public float damageMultiplier = 1.0f;

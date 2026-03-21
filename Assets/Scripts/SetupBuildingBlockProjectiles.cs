@@ -97,7 +97,7 @@ public class SetupBuildingBlockProjectiles : MonoBehaviour
                 {
                     BuildingBlockProjectile projectile = obj.AddComponent<BuildingBlockProjectile>();
                     projectile.minThrowVelocity = 1.0f;
-                    projectile.damagePerHit = 20f;
+                    projectile.damagePerHit = 25f;
                     projectile.damageMultiplier = 1.0f;
                     configuredCount++;
                     Debug.Log($"Added BuildingBlockProjectile to {obj.name}");

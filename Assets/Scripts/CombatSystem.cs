@@ -26,8 +26,8 @@ public class CombatSystem : MonoBehaviour
      * ========================================================= */
     [Header("Melee Settings")]
     public bool meleeWeaponsEnabled = true;
-    [Tooltip("Fallback damage when a melee weapon has no SwordPhysicsFix.damagePerHit or it is <= 0")]
-    public float meleeDamagePerHitFallback = 25f;
+    [Tooltip("Fallback damage when a melee weapon has no SwordPhysicsFix.damagePerHit or it is <= 0 (34 ≈ 3 hits vs 100 HP)")]
+    public float meleeDamagePerHitFallback = 34f;
     public float meleeCooldown = 0.3f;
 
     private HashSet<Rigidbody> recentWeapons = new HashSet<Rigidbody>();
