@@ -129,6 +129,9 @@ public class MeleeDurability : MonoBehaviour
 
         if (this == null) yield break;
 
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayWeaponBreak();
+
         // Spawn particle BEFORE disabling
         if (breakEffect != null)
         {

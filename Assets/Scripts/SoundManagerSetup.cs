@@ -7,6 +7,14 @@ using UnityEngine;
 /// </summary>
 public class SoundManagerSetup : MonoBehaviour
 {
+    [Header("Optional Clip Overrides")]
+    [Tooltip("Mini-boss spawn SFX (BossSpawnSFX)")]
+    public AudioClip bossSpawnClip;
+    [Tooltip("Player hurt SFX (PlayerHurtSFX)")]
+    public AudioClip playerHurtClip;
+    [Tooltip("Healing success SFX (HealingSFX)")]
+    public AudioClip healingClip;
+
     void Awake()
     {
         if (SoundManager.Instance != null) return;
@@ -39,6 +47,16 @@ public class SoundManagerSetup : MonoBehaviour
             // Disable InGameBGM to prevent duplicate playback
             igbgm.enabled = false;
         }
+
+        // Apply optional clip overrides for new combat audio.
+        if (bossSpawnClip != null) sm.bossSpawnClip = bossSpawnClip;
+        if (playerHurtClip != null) sm.playerHurtClip = playerHurtClip;
+        if (healingClip != null) sm.healingClip = healingClip;
+
+        // Ensure runtime registry includes any overrides set above.
+        sm.RegisterClip("boss_spawn", sm.bossSpawnClip);
+        sm.RegisterClip("player_hurt", sm.playerHurtClip);
+        sm.RegisterClip("healing", sm.healingClip);
 
         Debug.Log("[SoundManagerSetup] Created SoundManager and migrated audio references.");
     }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
@@ -28,6 +29,12 @@ public class SoundManager : MonoBehaviour
     public AudioClip gameOverClip;
     [Tooltip("Round start jingle")]
     public AudioClip roundStartClip;
+    [Tooltip("Seconds to fade BGM back in after round start jingle finishes")]
+    [Min(0.05f)]
+    public float roundStartBgmFadeInDuration = 1f;
+    [Tooltip("Seconds to duck BGM down before jingle plays")]
+    [Min(0.02f)]
+    public float roundStartBgmDuckDuration = 0.12f;
     [Tooltip("Enemy hit by projectile or melee")]
     public AudioClip enemyHitClip;
     [Tooltip("Projectile hits wall/surface")]
@@ -36,6 +43,12 @@ public class SoundManager : MonoBehaviour
     public AudioClip harshThudClip;
     [Tooltip("Melee weapon picked up")]
     public AudioClip woodSmallPickupClip;
+    [Tooltip("Mini-boss spawn SFX")]
+    public AudioClip bossSpawnClip;
+    [Tooltip("Player hurt SFX")]
+    public AudioClip playerHurtClip;
+    [Tooltip("Healing success SFX")]
+    public AudioClip healingClip;
 
     [Header("SFX Sources (dedicated AudioSource per sound, editable in Inspector)")]
     [Tooltip("Walking/footstep AudioSource")]
@@ -62,6 +75,7 @@ public class SoundManager : MonoBehaviour
 
     private Dictionary<string, AudioClip> clipRegistry = new Dictionary<string, AudioClip>();
     private Dictionary<string, AudioSource> sourceRegistry = new Dictionary<string, AudioSource>();
+    private Coroutine roundStartCoroutine;
 
     void Awake()
     {
@@ -78,7 +92,9 @@ public class SoundManager : MonoBehaviour
 
     void Start()
     {
-        PlayBGM();
+        // If round start jingle exists, RoundManager will call TriggerRoundStartAudio (duck → jingle → fade BGM in).
+        if (roundStartClip == null)
+            PlayBGM();
     }
 
     private void SetupAudioSources()
@@ -119,6 +135,9 @@ public class SoundManager : MonoBehaviour
         RegisterClip("glass_ping", glassPingClip);
         RegisterClip("harsh_thud", harshThudClip);
         RegisterClip("wood_small_pickup", woodSmallPickupClip);
+        RegisterClip("boss_spawn", bossSpawnClip);
+        RegisterClip("player_hurt", playerHurtClip);
+        RegisterClip("healing", healingClip);
 
         RegisterSource("walking", walkingSource);
         RegisterSource("player_hit", playerHitSource);
@@ -268,14 +287,25 @@ public class SoundManager : MonoBehaviour
     public void PlayRoundWin() => PlaySFX("round_win");
 
     /// <summary>
-    /// Convenience: play game over sound.
+    /// Play game over SFX and pause SimpleArea BGM until resumed.
     /// </summary>
-    public void PlayGameOver() => PlaySFX("game_over");
+    public void PlayGameOver()
+    {
+        PlaySFX("game_over");
+        if (bgmSource != null && bgmSource.isPlaying)
+            bgmSource.Pause();
+    }
 
     /// <summary>
     /// Convenience: play mini-boss spawn alert.
     /// </summary>
-    public void PlayMiniBossSpawn() => PlaySFX("miniboss_spawn");
+    public void PlayMiniBossSpawn()
+    {
+        if (sourceRegistry.ContainsKey("miniboss_spawn"))
+            PlaySFX("miniboss_spawn");
+        else
+            PlaySFX("boss_spawn");
+    }
 
     /// <summary>Play enemy hit sound (projectile/melee). Use from enemy or call PlaySFXAtPosition("enemy_hit", pos) for 3D.</summary>
     public void PlayEnemyHit() => PlaySFX("enemy_hit");
@@ -285,4 +315,78 @@ public class SoundManager : MonoBehaviour
     public void PlayHarshThud() => PlaySFX("harsh_thud");
     /// <summary>Play melee weapon pickup sound.</summary>
     public void PlayWoodSmallPickup() => PlaySFX("wood_small_pickup");
+    /// <summary>Play player hurt sound.</summary>
+    public void PlayPlayerHurt() => PlaySFX("player_hurt");
+    /// <summary>Play healing success sound.</summary>
+    public void PlayHealing() => PlaySFX("healing");
+
+    /// <summary>Play melee weapon break (durability depleted).</summary>
+    public void PlayWeaponBreak() => PlaySFX("weapon_break");
+
+    /// <summary>
+    /// Call at the beginning of each round. Plays round start jingle first, then fades BGM in.
+    /// If no round start clip is assigned, starts BGM at normal volume.
+    /// </summary>
+    public void TriggerRoundStartAudio()
+    {
+        if (roundStartClip == null)
+        {
+            PlayBGM();
+            return;
+        }
+
+        if (roundStartCoroutine != null)
+            StopCoroutine(roundStartCoroutine);
+        roundStartCoroutine = StartCoroutine(RoundStartAudioRoutine());
+    }
+
+    private IEnumerator RoundStartAudioRoutine()
+    {
+        float targetVol = bgmVolume * masterVolume;
+        if (bgmClip == null)
+        {
+            Debug.LogWarning("[SoundManager] Round start jingle set but bgmClip is null; playing jingle only.");
+            sfxSource.PlayOneShot(roundStartClip, sfxVolume * masterVolume);
+            yield return new WaitForSeconds(roundStartClip.length);
+            roundStartCoroutine = null;
+            yield break;
+        }
+
+        if (bgmSource == null)
+            SetupAudioSources();
+
+        if (bgmSource.clip != bgmClip)
+            bgmSource.clip = bgmClip;
+        bgmSource.loop = true;
+        if (!bgmSource.isPlaying)
+            bgmSource.Play();
+
+        float duck = Mathf.Max(0.02f, roundStartBgmDuckDuration);
+        float fadeIn = Mathf.Max(0.05f, roundStartBgmFadeInDuration);
+        float startVol = bgmSource.volume;
+        float t = 0f;
+        while (t < duck)
+        {
+            t += Time.deltaTime;
+            bgmSource.volume = Mathf.Lerp(startVol, 0f, t / duck);
+            yield return null;
+        }
+        bgmSource.volume = 0f;
+
+        sfxSource.PlayOneShot(roundStartClip, sfxVolume * masterVolume);
+        yield return new WaitForSeconds(roundStartClip.length);
+
+        if (!bgmSource.isPlaying)
+            bgmSource.Play();
+
+        t = 0f;
+        while (t < fadeIn)
+        {
+            t += Time.deltaTime;
+            bgmSource.volume = Mathf.Lerp(0f, targetVol, t / fadeIn);
+            yield return null;
+        }
+        bgmSource.volume = targetVol;
+        roundStartCoroutine = null;
+    }
 }

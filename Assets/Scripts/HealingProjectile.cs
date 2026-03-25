@@ -30,7 +30,7 @@ public class HealingProjectile : MonoBehaviour
     public Color healEffectColorEnd = new Color(0.2f, 0.8f, 0.3f, 1f);
 
     [Header("Impact Sound")]
-    [Tooltip("Sound when healing projectile hits enemy. If not set, uses SoundManager glass_ping.")]
+    [Tooltip("Optional override when heal succeeds (actual HP gained). If not set, uses SoundManager healing clip.")]
     public AudioClip hitClip;
     [Tooltip("AudioSource for hit sound. If not set, one is used or added at runtime.")]
     public AudioSource hitAudioSource;
@@ -117,10 +117,11 @@ public class HealingProjectile : MonoBehaviour
         if (cachedPlayerHealth == null)
             cachedPlayerHealth = FindFirstObjectByType<PlayerHealth>();
 
+        float healedAmount = 0f;
         if (cachedPlayerHealth != null && cachedPlayerHealth.IsAlive())
         {
-            cachedPlayerHealth.Heal(healAmount);
-            Debug.Log($"[HealingProjectile] Apple hit {enemy.gameObject.name}! Healed player by {healAmount} HP (now {cachedPlayerHealth.currentHealth}/{cachedPlayerHealth.maxHealth})");
+            healedAmount = cachedPlayerHealth.Heal(healAmount);
+            Debug.Log($"[HealingProjectile] Apple hit {enemy.gameObject.name}! Healed player by {healedAmount} HP (now {cachedPlayerHealth.currentHealth}/{cachedPlayerHealth.maxHealth})");
         }
         else
         {
@@ -129,10 +130,13 @@ public class HealingProjectile : MonoBehaviour
 
         Vector3 contactPoint = collision.contactCount > 0 ? collision.GetContact(0).point : transform.position;
 
-        // Play impact sound
-        if (hitClip != null)
+        // Healing success: healing SFX (or custom hitClip). Otherwise: glass ping (no heal / at full HP / dead player).
+        if (healedAmount > 0f)
         {
-            AudioSource.PlayClipAtPoint(hitClip, contactPoint);
+            if (hitClip != null)
+                AudioSource.PlayClipAtPoint(hitClip, contactPoint);
+            else if (SoundManager.Instance != null)
+                SoundManager.Instance.PlaySFXAtPosition("healing", contactPoint);
         }
         else if (SoundManager.Instance != null)
         {

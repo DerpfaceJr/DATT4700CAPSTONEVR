@@ -88,6 +88,10 @@ public class PlayerHealth : MonoBehaviour
         onHealthChanged?.Invoke(currentHealth);
         healthBar.fillAmount = currentHealth / maxHealth;
 
+        // Play player hurt SFX when damage is successfully applied
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayPlayerHurt();
+
         // Check for death
         if (currentHealth <= 0f)
         {
@@ -103,9 +107,9 @@ public class PlayerHealth : MonoBehaviour
     /// <summary>
     /// Heal the player
     /// </summary>
-    public void Heal(float amount)
+    public float Heal(float amount)
     {
-        if (isDead) return;
+        if (isDead) return 0f;
         
         float oldHealth = currentHealth;
         currentHealth += amount;
@@ -120,6 +124,7 @@ public class PlayerHealth : MonoBehaviour
             Debug.Log($"PlayerHealth: Healed {actualHealed:F1}! Current health: {currentHealth:F1}/{maxHealth:F1}");
             onHealthChanged?.Invoke(currentHealth);
         }
+        return actualHealed;
     }
     
     /// <summary>

@@ -201,6 +201,11 @@ public class RoundManager : MonoBehaviour
     public void StartRound(int roundNumber)
     {
         if (gameOver) return;
+
+        if (soundManager == null)
+            soundManager = SoundManager.Instance ?? FindObjectOfType<SoundManager>();
+        if (soundManager != null)
+            soundManager.TriggerRoundStartAudio();
         
         currentRound = roundNumber;
         roundNumText.text = currentRound.ToString();
@@ -467,14 +472,16 @@ public class RoundManager : MonoBehaviour
             Debug.Log($"=== Round {currentRound} Complete! ===");
         }
         
-        // Play win SFX when round is cleared (not for round 1 / first enemy)
-        if (currentRound > 1)
+        // Play win SFX when any round is cleared (including round 1); stop BGM until next round
+        if (soundManager != null)
         {
-            if (soundManager != null)
-                soundManager.PlayRoundWin();
-            else if (sfxAudioSource != null && winClip != null)
-                sfxAudioSource.PlayOneShot(winClip);
+            soundManager.PlayRoundWin();
+            soundManager.StopBGM();
         }
+        else if (sfxAudioSource != null && winClip != null)
+            sfxAudioSource.PlayOneShot(winClip);
+        if (bgmAudioSource != null && bgmAudioSource.isPlaying)
+            bgmAudioSource.Stop();
         
         // Store player position for next round's new enemy spawn
         if (playerObject != null)
