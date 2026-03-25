@@ -1,0 +1,20 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+Built from '6000.2/respin/6000.2.8f1-e4064264ae96' branch; Version is '6000.2.8f1 (c9992ac36c34) revision 13211946'; Using compiler version '194234433'; Build Type 'Release'
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-joshu" at "2026-03-25T17:27:25.2157071Z"
+OS: 'Windows 11  (10.0.26200) 64bit Core' Language: 'en' Physical Memory: 31861 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+Date: 2026-03-25T17:27:25Z
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.2.8f1\Editor\Unity.exe
+-batchmode
+-quit
+-projectPath
+c:\Users\joshu\Documents\DATT4700CAPSTONEVR
+-executeMethod
+LabNavMeshBaker.ConfigureLabOnlyAndBake
+-logFile
+c:\Users\joshu\Documents\DATT4700CAPSTONEVR\unity-navmesh-bake.log
+Successfully changed project path to: c:\Users\joshu\Documents\DATT4700CAPSTONEVR
+C:/Users/joshu/Documents/DATT4700CAPSTONEVR
+Exiting without the bug reporter. Application will terminate with return code 1
