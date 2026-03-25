@@ -374,6 +374,7 @@ public class HelpSlideshow : MonoBehaviour
         txt.color = textColor;
         txt.alignment = TextAlignmentOptions.Center;
         txt.fontStyle = FontStyles.Bold;
+        txt.raycastTarget = false;
 
         return btn;
     }
