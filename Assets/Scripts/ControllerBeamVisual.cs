@@ -1,4 +1,3 @@
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -36,32 +35,12 @@ public class ControllerBeamVisual : MonoBehaviour
         _lineRenderer.receiveShadows = false;
 
         EnsureBeamMaterial();
-        DisableIfOvrRaycastPointerDuplicate();
     }
 
     private void Start()
     {
         // Pipeline/shaders can be ready after Awake; fix pink error material if needed.
         EnsureBeamMaterial();
-    }
-
-    /// <summary>
-    /// If this controller is the OVRRaycaster pointer, OVR draws its own laser — disable ours to avoid double lines and mismatch.
-    /// </summary>
-    void DisableIfOvrRaycastPointerDuplicate()
-    {
-        foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-        {
-            if (mb == null || mb.GetType().Name != "OVRRaycaster") continue;
-            var field = mb.GetType().GetField("pointer", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (field == null) continue;
-            var pointerGo = field.GetValue(mb) as GameObject;
-            if (pointerGo != gameObject) continue;
-            enabled = false;
-            if (_lineRenderer != null)
-                _lineRenderer.enabled = false;
-            return;
-        }
     }
 
     void EnsureBeamMaterial()
