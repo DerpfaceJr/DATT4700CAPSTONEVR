@@ -29,7 +29,7 @@ public class TutorialArea : MonoBehaviour
 
     [Header("Font Sizes")]
     public float titleFontSize = 36f;
-    public float instructionsFontSize = 20f;
+    public float instructionsFontSize = 17f;
     public float dummyLabelFontSize = 28f;
 
     private GameObject dummyEnemy;
@@ -153,7 +153,7 @@ public class TutorialArea : MonoBehaviour
         canvasObj.AddComponent<GraphicRaycaster>();
 
         RectTransform canvasRect = canvasObj.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(600, 400);
+        canvasRect.sizeDelta = new Vector2(650, 560);
         canvasRect.localScale = new Vector3(0.002f, 0.002f, 0.002f);
 
         // Background
@@ -176,7 +176,7 @@ public class TutorialArea : MonoBehaviour
         titleRect.offsetMin = new Vector2(10, 0);
         titleRect.offsetMax = new Vector2(-10, -10);
         TextMeshProUGUI titleText = titleObj.AddComponent<TextMeshProUGUI>();
-        titleText.text = "TUTORIAL AREA";
+        titleText.text = "PRACTICE — HOW TO PLAY";
         titleText.fontSize = titleFontSize;
         titleText.color = new Color(0f, 1f, 0.8f, 1f);
         titleText.alignment = TextAlignmentOptions.Center;
@@ -186,18 +186,27 @@ public class TutorialArea : MonoBehaviour
         GameObject instrObj = new GameObject("Instructions");
         instrObj.transform.SetParent(bgObj.transform, false);
         RectTransform instrRect = instrObj.AddComponent<RectTransform>();
-        instrRect.anchorMin = new Vector2(0, 0.05f);
-        instrRect.anchorMax = new Vector2(1, 0.72f);
+        instrRect.anchorMin = new Vector2(0, 0.04f);
+        instrRect.anchorMax = new Vector2(1, 0.74f);
         instrRect.offsetMin = new Vector2(15, 5);
         instrRect.offsetMax = new Vector2(-15, -5);
         TextMeshProUGUI instrText = instrObj.AddComponent<TextMeshProUGUI>();
         instrText.text =
-            "Practice your combat skills!\n\n" +
-            "<color=#FFD700>GRAB:</color> Grip button to pick up objects\n" +
-            "<color=#FFD700>THROW:</color> Release grip while swinging\n" +
-            "<color=#FFD700>MELEE:</color> Grab weapon and swing at enemy\n\n" +
-            "The dummy enemy has <color=#FF4444>unlimited health</color>\n" +
-            "so practice as much as you want!";
+            "<color=#88DDFF>New to VR (Meta Quest)?</color>\n" +
+            "Clear your play space. Wear the headset comfortably. Use <color=#FFD700>grip</color> (squeeze the side of the controller) to pick up most objects—like holding something in your real hand.\n\n" +
+            "<color=#FFD700>MOVE:</color> <b>Left thumbstick</b> — walk forward/back and strafe. Direction follows where you look.\n" +
+            "<color=#FFD700>TURN:</color> <b>Right thumbstick</b> left/right — snap-turn your view (when enabled).\n\n" +
+            "<color=#FFD700>GRAB:</color> Hold <b>grip</b> near an object to pick it up.\n" +
+            "<color=#FFD700>THROW:</color> Swing and <b>release grip</b> to throw; weak tosses may not count as attacks.\n" +
+            "<color=#FFD700>MELEE:</color> Hold a weapon and swing so the <b>blade</b> hits enemies.\n" +
+            "<color=#FFD700>THROWABLES:</color> Building blocks hurt enemies when thrown with enough speed—not when slowly rolling.\n\n" +
+            "<color=#88DDFF>In the full game</color>\n" +
+            "• <b>Rounds</b> — defeat every enemy to finish a round; difficulty scales up.\n" +
+            "• <b>Your health</b> — enemies can hurt you on contact or with attacks; you get short <b>invulnerability</b> after taking damage.\n" +
+            "• <b>Weapon durability</b> — while holding a melee weapon, a HUD icon shows remaining hits; weapons can <b>break</b> and later respawn.\n" +
+            "• <b>Healing apples</b> — green apples heal <b>you</b> when they hit an enemy (they do not damage the enemy).\n" +
+            "• Dropped weapons can show on the <b>minimap</b> so you can find them again.\n\n" +
+            "<color=#44FF88>This dummy has unlimited health</color> — use it to practice with no pressure.";
         instrText.fontSize = instructionsFontSize;
         instrText.color = new Color(0.85f, 0.9f, 1f, 0.95f);
         instrText.alignment = TextAlignmentOptions.Left;
