@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.XR;
+using UnityEngine.XR.Interaction.Toolkit.UI;
 using System.Collections.Generic;
 
 /// <summary>
@@ -36,7 +37,8 @@ public class VRControllerUIClick : MonoBehaviour
     private bool _leftTriggerDown;
     private bool _rightTriggerDown;
     private EventSystem _eventSystem;
-    private GraphicRaycaster _graphicRaycaster;
+    /// <summary>TrackedDeviceGraphicRaycaster (XR) or GraphicRaycaster — both derive from BaseRaycaster.</summary>
+    private BaseRaycaster _uiRaycaster;
     private bool _initialized;
     private GameObject _hoveredObject;
     private PointerEventData _hoverPointerData;
@@ -72,11 +74,20 @@ public class VRControllerUIClick : MonoBehaviour
         if (raycastCamera == null)
             Debug.LogWarning("[VRControllerUIClick] No camera for UI raycast.");
 
-        _graphicRaycaster = targetCanvas.GetComponent<GraphicRaycaster>();
-        if (_graphicRaycaster == null)
-            _graphicRaycaster = targetCanvas.GetComponentInChildren<GraphicRaycaster>(true);
-        if (_graphicRaycaster == null && debugLogs)
-            Debug.Log("[VRControllerUIClick] No GraphicRaycaster on Canvas – using EventSystem.RaycastAll.");
+        // Prefer XR raycaster: GetComponent<GraphicRaycaster>() would return the flat UI raycaster first
+        // when both exist, which breaks VR hit testing on some platforms (e.g. Mac).
+        _uiRaycaster = targetCanvas.GetComponent<TrackedDeviceGraphicRaycaster>();
+        if (_uiRaycaster == null)
+            _uiRaycaster = targetCanvas.GetComponent<GraphicRaycaster>();
+        if (_uiRaycaster == null)
+        {
+            var t = targetCanvas.GetComponentInChildren<TrackedDeviceGraphicRaycaster>(true);
+            if (t != null) _uiRaycaster = t;
+        }
+        if (_uiRaycaster == null)
+            _uiRaycaster = targetCanvas.GetComponentInChildren<GraphicRaycaster>(true);
+        if (_uiRaycaster == null && debugLogs)
+            Debug.Log("[VRControllerUIClick] No UI raycaster on Canvas – using EventSystem.RaycastAll.");
 
         _eventSystem = EventSystem.current;
         if (_eventSystem == null)
@@ -86,11 +97,11 @@ public class VRControllerUIClick : MonoBehaviour
         EnsureInputDevices();
         _hoverPointerData = new PointerEventData(_eventSystem);
 
-        _initialized = targetCanvas != null && (_graphicRaycaster != null || _eventSystem != null);
+        _initialized = targetCanvas != null && (_uiRaycaster != null || _eventSystem != null);
 
         if (debugLogs)
         {
-            Debug.Log($"[VRControllerUIClick] Init: canvas={targetCanvas != null}, camera={raycastCamera != null}, graphicRaycaster={_graphicRaycaster != null}, eventSystem={_eventSystem != null}, leftCtrl={leftController != null}, rightCtrl={rightController != null}, leftDev={_leftDevice.isValid}, rightDev={_rightDevice.isValid}, initialized={_initialized}");
+            Debug.Log($"[VRControllerUIClick] Init: canvas={targetCanvas != null}, camera={raycastCamera != null}, uiRaycaster={_uiRaycaster != null}, eventSystem={_eventSystem != null}, leftCtrl={leftController != null}, rightCtrl={rightController != null}, leftDev={_leftDevice.isValid}, rightDev={_rightDevice.isValid}, initialized={_initialized}");
         }
     }
 
@@ -260,8 +271,8 @@ public class VRControllerUIClick : MonoBehaviour
                     screenPoint = raycastCamera.WorldToScreenPoint(worldHit);
                     _raycastResults.Clear();
                     PointerEventData ped = new PointerEventData(_eventSystem) { position = screenPoint };
-                    if (_graphicRaycaster != null)
-                        _graphicRaycaster.Raycast(ped, _raycastResults);
+                    if (_uiRaycaster != null)
+                        _uiRaycaster.Raycast(ped, _raycastResults);
                     else if (_eventSystem != null)
                         _eventSystem.RaycastAll(ped, _raycastResults);
 
@@ -286,7 +297,7 @@ public class VRControllerUIClick : MonoBehaviour
         if (RaycastButtonsDirect(worldRay, out Button directHit, out float directEnter))
         {
             hitButton = directHit;
-            hitResult = new RaycastResult { gameObject = directHit.gameObject, module = _graphicRaycaster, distance = directEnter };
+            hitResult = new RaycastResult { gameObject = directHit.gameObject, module = _uiRaycaster, distance = directEnter };
             screenPoint = raycastCamera != null ? raycastCamera.WorldToScreenPoint(worldRay.GetPoint(directEnter)) : Vector2.zero;
             return true;
         }

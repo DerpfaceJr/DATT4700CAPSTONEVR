@@ -49,6 +49,8 @@ public class SoundManager : MonoBehaviour
     public AudioClip playerHurtClip;
     [Tooltip("Healing success SFX")]
     public AudioClip healingClip;
+    [Tooltip("When player throws a building-block / healing projectile")]
+    public AudioClip projectileThrowClip;
 
     [Header("SFX Sources (dedicated AudioSource per sound, editable in Inspector)")]
     [Tooltip("Walking/footstep AudioSource")]
@@ -138,6 +140,7 @@ public class SoundManager : MonoBehaviour
         RegisterClip("boss_spawn", bossSpawnClip);
         RegisterClip("player_hurt", playerHurtClip);
         RegisterClip("healing", healingClip);
+        RegisterClip("projectile_throw", projectileThrowClip);
 
         RegisterSource("walking", walkingSource);
         RegisterSource("player_hit", playerHitSource);
@@ -322,6 +325,9 @@ public class SoundManager : MonoBehaviour
 
     /// <summary>Play melee weapon break (durability depleted).</summary>
     public void PlayWeaponBreak() => PlaySFX("weapon_break");
+
+    /// <summary>Play when player throws a projectile (building block / healing apple).</summary>
+    public void PlayProjectileThrow() => PlaySFX("projectile_throw");
 
     /// <summary>
     /// Call at the beginning of each round. Plays round start jingle first, then fades BGM in.

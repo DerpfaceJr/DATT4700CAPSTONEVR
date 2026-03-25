@@ -19,6 +19,10 @@ public class ConfigureBallLikeCube : MonoBehaviour
     
     [Tooltip("Throw velocity multiplier")]
     public float throwVelocityMultiplier = 1.5f;
+
+    [Tooltip("Minimum release speed (m/s) to play projectile throw SFX (avoids sound on soft drops).")]
+    [Min(0.1f)]
+    public float minProjectileThrowSfxSpeed = 1.25f;
     
     private Rigidbody rb;
     private Vector3 lastPosition;
@@ -196,6 +200,14 @@ public class ConfigureBallLikeCube : MonoBehaviour
             Random.Range(-5f, 5f),
             Random.Range(-5f, 5f)
         );
+
+        BuildingBlockProjectile bbp = GetComponent<BuildingBlockProjectile>();
+        HealingProjectile healProj = GetComponent<HealingProjectile>();
+        if (bbp != null)
+            bbp.MarkThrownByPlayer();
+        if ((bbp != null || healProj != null) && SoundManager.Instance != null &&
+            finalVelocity.magnitude >= minProjectileThrowSfxSpeed)
+            SoundManager.Instance.PlayProjectileThrow();
         
         Debug.Log($"[ConfigureBallLikeCube] Applied throw velocity to {gameObject.name}: {finalVelocity.magnitude:F2} m/s");
     }

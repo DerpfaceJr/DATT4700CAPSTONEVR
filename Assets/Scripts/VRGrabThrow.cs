@@ -59,6 +59,11 @@ public class VRGrabThrow : MonoBehaviour
     
     [Tooltip("Use weighted average (recent frames weighted more)")]
     public bool useWeightedAverage = true;
+
+    [Header("Audio")]
+    [Tooltip("Minimum throw speed (m/s) to play projectile throw SFX. Below this = drop/let-go, not a throw or swing.")]
+    [Min(0.1f)]
+    public float minProjectileThrowSfxSpeed = 1.25f;
     
     private Rigidbody grabbedObject = null;
     private Transform grabPoint = null;
@@ -1113,6 +1118,10 @@ public class VRGrabThrow : MonoBehaviour
         {
             projectile.MarkThrownByPlayer();
         }
+
+        bool isThrowableProjectile = projectile != null || rbToRelease.GetComponent<HealingProjectile>() != null;
+        if (isThrowableProjectile && SoundManager.Instance != null && throwVelocity.magnitude >= minProjectileThrowSfxSpeed)
+            SoundManager.Instance.PlayProjectileThrow();
 
         if (debugMode)
         {
