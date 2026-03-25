@@ -38,7 +38,7 @@ public class IntroSlideshow : MonoBehaviour
     public Color startButtonColor = new Color(0.12f, 0.72f, 0.30f, 1f);
     public Color disabledColor = new Color(0.25f, 0.25f, 0.30f, 0.55f);
     public Color textColor = Color.white;
-    public Color backButtonColor;
+    public Color backButtonColor = new Color(0.8f, 0.2f, 0.2f, 1f);
 
     [Header("Font Sizes")]
     public float buttonFontSize = 30f;
@@ -203,11 +203,12 @@ public class IntroSlideshow : MonoBehaviour
         {
             float p = 0.015f;
             startButton = MakeButton("StartGameBtn", navBar, "Start  \u25B6", 0.70f + p, p, 1f - p, 1f - p, startButtonColor);
+            //startButton = MakeButton("StartGameBtn", navBar, "Start ▶", 0.55f, p, 0.85f, 1f - p, startButtonColor);
         }
         startButton.gameObject.SetActive(false);
 
         backButton = backButtonRef;
-        if(backButton = null)
+        if(backButton == null)
         {
             Transform t = FindChild(navBar, "BackBtn");
             if (t != null) backButton = t.GetComponent<Button>();
@@ -286,29 +287,39 @@ public class IntroSlideshow : MonoBehaviour
         bool isFirst = currentIndex == 0;
         bool isLast = currentIndex >= slides.Length - 1;
 
+        nextButton.gameObject.SetActive(!isLast);
+        startButton.gameObject.SetActive(isLast);
 
-        // If want the first button to be interactable then command out this line
-        //prevButton.interactable = !isFirst;
+        nextButton.interactable = !isLast;
+        startButton.interactable = isLast;
 
-        //Controll button background colour 
-        //TintButton(prevButton, isFirst ? disabledColor : buttonColor);
+        //Image nextImg = nextButton.GetComponent<Image>();
+        //Image startImg = startButton.GetComponent<Image>();
 
-        if(currentIndex == 0)
+        //if (nextImg != null) nextImg.raycastTarget = !isLast;
+        //if (startImg != null) startImg.raycastTarget = isLast;
+
+
+        backButton.gameObject.SetActive(isFirst);
+        prevButton.gameObject.SetActive(!isFirst);
+
+        backButton.interactable = isFirst;
+        prevButton.interactable = !isFirst;
+
+        Image backImg = backButton.GetComponent<Image>();
+        Image prevImg = prevButton.GetComponent<Image>();
+
+        //if (backImg != null) backImg.raycastTarget = isFirst;
+        //if (prevImg != null) prevImg.raycastTarget = !isFirst;
+
+        if (isFirst)
         {
-            backButton.gameObject.SetActive(true);
             TintButton(backButton, backButtonColor);
-            prevButton.gameObject.SetActive(false);
         }
         else
         {
-            backButton.gameObject.SetActive(false);
-            TintButton(backButton, disabledColor);
-            prevButton.gameObject.SetActive(true);
             TintButton(prevButton, buttonColor);
         }
-
-        nextButton.gameObject.SetActive(!isLast);
-        startButton.gameObject.SetActive(isLast);
 
         UpdateCounter();
     }

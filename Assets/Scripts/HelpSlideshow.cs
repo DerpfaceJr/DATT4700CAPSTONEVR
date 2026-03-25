@@ -267,8 +267,18 @@ public class HelpSlideshow : MonoBehaviour
         prevButton.interactable = !isFirst;
         TintButton(prevButton, isFirst ? disabledColor : buttonColor);
 
+        // visibility
         nextButton.gameObject.SetActive(!isLast);
         startButton.gameObject.SetActive(isLast);
+
+        nextButton.interactable = !isLast;
+        startButton.interactable = isLast;
+
+        //Image nextImg = nextButton.GetComponent<Image>();
+        //Image startImg = startButton.GetComponent<Image>();
+
+        //if (nextImg != null) nextImg.raycastTarget = !isLast;
+        //if (startImg != null) startImg.raycastTarget = isLast;
 
         UpdateCounter();
     }
