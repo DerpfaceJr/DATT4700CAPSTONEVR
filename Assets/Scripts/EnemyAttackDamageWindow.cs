@@ -39,8 +39,8 @@ public class EnemyAttackDamageWindow : MonoBehaviour
     [Tooltip("State name or sub-state name to match (layer 0)")]
     public string attackStateName = "Attack";
     public int animatorLayer;
-    [Range(0f, 1f)] public float normalizedTimeOpen = 0.18f;
-    [Range(0f, 1f)] public float normalizedTimeClose = 0.72f;
+    [Range(0f, 1f)] public float normalizedTimeOpen = 0.28f;
+    [Range(0f, 1f)] public float normalizedTimeClose = 0.58f;
 
     public bool IsDamageActive { get; private set; }
 
