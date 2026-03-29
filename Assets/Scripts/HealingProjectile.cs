@@ -39,6 +39,11 @@ public class HealingProjectile : MonoBehaviour
     private PlayerHealth cachedPlayerHealth;
     private bool hasHealed = false;
 
+    void Awake()
+    {
+        cachedPlayerHealth = FindFirstObjectByType<PlayerHealth>();
+    }
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -57,7 +62,8 @@ public class HealingProjectile : MonoBehaviour
         }
 
         rb.useGravity = true;
-        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        //rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
         Collider col = GetComponent<Collider>();
         if (col == null)
@@ -77,7 +83,7 @@ public class HealingProjectile : MonoBehaviour
             col.isTrigger = false;
         }
 
-        cachedPlayerHealth = FindFirstObjectByType<PlayerHealth>();
+        //cachedPlayerHealth = FindFirstObjectByType<PlayerHealth>();
 
         PlayerBallCollisionIgnore collisionIgnore = FindFirstObjectByType<PlayerBallCollisionIgnore>();
         if (collisionIgnore != null && collisionIgnore.ignoreBallCollisions)
@@ -93,6 +99,7 @@ public class HealingProjectile : MonoBehaviour
         if (hasHealed) return;
         if (rb == null) return;
 
+        //float objectSpeed = rb.linearVelocity.magnitude;
         float objectSpeed = rb.linearVelocity.magnitude;
         float relativeSpeed = collision.relativeVelocity.magnitude;
         float effectiveSpeed = Mathf.Max(objectSpeed, relativeSpeed);
