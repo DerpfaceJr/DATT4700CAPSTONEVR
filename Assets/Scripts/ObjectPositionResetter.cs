@@ -85,7 +85,8 @@ public class ObjectPositionResetter : MonoBehaviour
     /// </summary>
     public void FindAndTrackObjects()
     {
-        trackedObjects.Clear();
+        // Do not clear: merge new finds so stored spawn positions survive refind after rounds.
+        // (Destroyed objects are removed during ResetObjects when references are null.)
         
         // Find by tags
         foreach (string tag in trackableTags)
@@ -113,8 +114,8 @@ public class ObjectPositionResetter : MonoBehaviour
             TrackObject(proj.gameObject);
         }
 
-        // Find healing projectiles (e.g. apples)
-        HealingProjectile[] healingProjectiles = FindObjectsOfType<HealingProjectile>();
+        // Find healing projectiles (e.g. apples) — include inactive (used apples are hidden, not destroyed)
+        HealingProjectile[] healingProjectiles = FindObjectsByType<HealingProjectile>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (var hp in healingProjectiles)
         {
             TrackObject(hp.gameObject);
@@ -262,6 +263,11 @@ public class ObjectPositionResetter : MonoBehaviour
                 // Force physics sync
                 Physics.SyncTransforms();
             }
+
+            // Restore healing apples (hidden after use until next round reset)
+            HealingProjectile healProj = obj.GetComponent<HealingProjectile>();
+            if (healProj != null)
+                healProj.ResetForNewRound();
             
             resetCount++;
         }

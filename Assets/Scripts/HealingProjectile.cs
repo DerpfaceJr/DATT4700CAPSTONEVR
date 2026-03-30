@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 /// <summary>
 /// When thrown at an enemy and it hits, heals the player instead of damaging the enemy.
@@ -15,7 +16,7 @@ public class HealingProjectile : MonoBehaviour
     public float minHitVelocity = 1.0f;
 
     [Header("Break on Heal")]
-    [Tooltip("Delay before destroying the object after healing (lets sound/particle play)")]
+    [Tooltip("Delay before hiding the object after healing (lets sound/particle play). Object respawns next round via ObjectPositionResetter.")]
     public float destroyDelay = 0.15f;
 
     [Tooltip("Particle effect prefab to spawn when the apple breaks (e.g. HitParticle). If null, no particles.")]
@@ -42,11 +43,13 @@ public class HealingProjectile : MonoBehaviour
     void Awake()
     {
         cachedPlayerHealth = FindFirstObjectByType<PlayerHealth>();
+        rb = GetComponent<Rigidbody>();
     }
 
     void Start()
     {
-        rb = GetComponent<Rigidbody>();
+        if (rb == null)
+            rb = GetComponent<Rigidbody>();
         if (rb == null)
         {
             Debug.LogError($"[HealingProjectile] No Rigidbody found on {gameObject.name}");
@@ -172,7 +175,34 @@ public class HealingProjectile : MonoBehaviour
             }
         }
 
-        // Destroy the apple
-        Destroy(gameObject, destroyDelay);
+        // Hide instead of destroy so ObjectPositionResetter can restore the apple next round
+        StartCoroutine(HideAfterHealCoroutine());
+    }
+
+    private IEnumerator HideAfterHealCoroutine()
+    {
+        yield return new WaitForSeconds(destroyDelay);
+        gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Called when a round resets positions. Reactivates a used apple and clears heal state.
+    /// </summary>
+    public void ResetForNewRound()
+    {
+        hasHealed = false;
+        cachedPlayerHealth = FindFirstObjectByType<PlayerHealth>();
+        gameObject.SetActive(true);
+        if (rb == null)
+            rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        PlayerBallCollisionIgnore collisionIgnore = FindFirstObjectByType<PlayerBallCollisionIgnore>();
+        if (collisionIgnore != null && collisionIgnore.ignoreBallCollisions)
+            collisionIgnore.AddBallToIgnore(gameObject);
     }
 }

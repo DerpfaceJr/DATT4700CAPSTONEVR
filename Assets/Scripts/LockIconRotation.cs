@@ -18,6 +18,7 @@ public class LockIconRotation : MonoBehaviour
 
     private Transform weaponParent;
     private bool reparented;
+    private SpriteRenderer iconSprite;
 
     void Start()
     {
@@ -31,6 +32,7 @@ public class LockIconRotation : MonoBehaviour
         }
 
         ReparentToWorld();
+        iconSprite = GetComponent<SpriteRenderer>();
     }
 
     void OnEnable()
@@ -46,6 +48,14 @@ public class LockIconRotation : MonoBehaviour
         {
             if (reparented)
                 Destroy(gameObject);
+            return;
+        }
+
+        // Healing apple hidden after use (SetActive false) until round reset — hide minimap icon while inactive
+        if (!weaponParent.gameObject.activeInHierarchy)
+        {
+            if (iconSprite != null)
+                iconSprite.enabled = false;
             return;
         }
 
