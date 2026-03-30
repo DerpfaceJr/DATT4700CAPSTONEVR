@@ -21,6 +21,12 @@ public class ThrowablesIconControl : MonoBehaviour
         grabbable = GetComponent<Grabbable>();
     }
 
+    void OnDestroy()
+    {
+        // Minimap icon may be reparented (LockIconRotation) so it survives the throwable otherwise — remove it with us.
+        if (iconRenderer != null && iconRenderer.gameObject != gameObject)
+            Destroy(iconRenderer.gameObject);
+    }
 
     void Update()
     {

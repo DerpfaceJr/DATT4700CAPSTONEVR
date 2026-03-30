@@ -3,7 +3,8 @@ using UnityEngine;
 /// <summary>
 /// Keeps a minimap icon independent of its weapon - reparents to world space so the weapon's
 /// transform (rotation, scale, grab) never affects the icon. Icon always has world X=90 Y=0 Z=0
-/// and uniform scale.
+/// and uniform scale. When the tracked object is destroyed (e.g. healing apple used up), this
+/// component destroys the icon so it does not linger on the minimap.
 /// </summary>
 public class LockIconRotation : MonoBehaviour
 {
@@ -40,7 +41,13 @@ public class LockIconRotation : MonoBehaviour
 
     void LateUpdate()
     {
-        if (weaponParent == null) return;
+        // Tracked object was destroyed (e.g. healing apple after use) — remove orphaned minimap icon.
+        if (weaponParent == null)
+        {
+            if (reparented)
+                Destroy(gameObject);
+            return;
+        }
 
         transform.position = weaponParent.position + Vector3.up * heightOffset;
         transform.rotation = LockedWorldRotation;

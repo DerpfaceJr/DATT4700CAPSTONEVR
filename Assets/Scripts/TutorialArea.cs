@@ -105,11 +105,9 @@ public class TutorialArea : MonoBehaviour
             cs = dummyEnemy.AddComponent<CombatSystem>();
         cs.instakillEnabled = false;
 
-        // Add health bar for visual feedback
-        EnemyHealthBar hpBar = dummyEnemy.GetComponent<EnemyHealthBar>();
-        if (hpBar == null)
-            hpBar = dummyEnemy.AddComponent<EnemyHealthBar>();
-        hpBar.hideAtFullHealth = false;
+        // No world HP bar — dummy is for practice (unlimited health); bar is distracting here.
+        foreach (EnemyHealthBar hp in dummyEnemy.GetComponentsInChildren<EnemyHealthBar>(true))
+            Destroy(hp);
 
         // Disable seek-and-attack so dummy stands still
         EnemySeekAndAttack seek = dummyEnemy.GetComponent<EnemySeekAndAttack>();
