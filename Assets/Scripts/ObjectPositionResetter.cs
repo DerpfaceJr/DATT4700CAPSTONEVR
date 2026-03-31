@@ -5,6 +5,7 @@ using System.Collections.Generic;
 /// Tracks and resets positions of throwable objects and weapons between rounds
 /// Attach to RoundManager or GameManager
 /// </summary>
+[DefaultExecutionOrder(100)]
 public class ObjectPositionResetter : MonoBehaviour
 {
     [Header("Object Tracking")]
@@ -108,7 +109,7 @@ public class ObjectPositionResetter : MonoBehaviour
         }
         
         // Find objects with specific components
-        BuildingBlockProjectile[] projectiles = FindObjectsOfType<BuildingBlockProjectile>();
+        BuildingBlockProjectile[] projectiles = FindObjectsByType<BuildingBlockProjectile>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (var proj in projectiles)
         {
             TrackObject(proj.gameObject);
@@ -170,6 +171,10 @@ public class ObjectPositionResetter : MonoBehaviour
         if (rb != null)
         {
             state.wasKinematic = rb.isKinematic;
+            // BuildingBlockProjectile / HealingProjectile force isKinematic=false in Start; if we track
+            // before that runs, we'd store true and reset would break throws (notably on Mac / variable script order).
+            if (UsesDynamicThrowablePhysics(obj))
+                state.wasKinematic = false;
         }
         
         trackedObjects[obj] = state;
@@ -259,6 +264,10 @@ public class ObjectPositionResetter : MonoBehaviour
                 
                 // Restore kinematic state
                 rb.isKinematic = state.wasKinematic;
+
+                // Match BuildingBlockProjectile / HealingProjectile: must stay dynamic for throws and enemy hits
+                if (UsesDynamicThrowablePhysics(obj))
+                    ApplyDynamicThrowablePhysics(rb, obj);
                 
                 // Force physics sync
                 Physics.SyncTransforms();
@@ -301,11 +310,33 @@ public class ObjectPositionResetter : MonoBehaviour
                 if (rb != null)
                 {
                     state.wasKinematic = rb.isKinematic;
+                    if (UsesDynamicThrowablePhysics(obj))
+                        state.wasKinematic = false;
                 }
             }
         }
         
         Debug.Log($"ObjectPositionResetter: Updated stored positions for {trackedObjects.Count} objects");
+    }
+
+    /// <summary>Throwables that must stay non-kinematic for physics throws / CombatSystem hits.</summary>
+    private static bool UsesDynamicThrowablePhysics(GameObject obj)
+    {
+        if (obj == null) return false;
+        return obj.GetComponent<BuildingBlockProjectile>() != null
+            || obj.GetComponent<HealingProjectile>() != null
+            || obj.GetComponent<ConfigureBallLikeCube>() != null;
+    }
+
+    private static void ApplyDynamicThrowablePhysics(Rigidbody rb, GameObject obj)
+    {
+        if (rb == null || obj == null) return;
+        rb.isKinematic = false;
+        rb.useGravity = true;
+        if (obj.GetComponent<HealingProjectile>() != null)
+            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        else
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
     }
     
     /// <summary>

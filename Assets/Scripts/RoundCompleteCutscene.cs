@@ -59,16 +59,18 @@ public class RoundCompleteCutscene : MonoBehaviour
             Debug.LogError("RoundCompleteCutscene: RoundManager not found!");
         }
         
-        // Find VRMovementController if not assigned
+        // Find VRMovementController if not assigned (include inactive — XR rigs may start disabled on some platforms)
         if (movementController == null)
         {
-            movementController = FindObjectOfType<VRMovementController>();
+            VRMovementController[] movers = FindObjectsByType<VRMovementController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (movers != null && movers.Length > 0)
+                movementController = movers[0];
         }
         
-        // Find VRGrabThrow scripts if not assigned
+        // Find VRGrabThrow scripts if not assigned (include inactive — hand anchors may enable after XR init)
         if (grabThrowScripts == null || grabThrowScripts.Length == 0)
         {
-            grabThrowScripts = FindObjectsOfType<VRGrabThrow>();
+            grabThrowScripts = FindObjectsByType<VRGrabThrow>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         }
         
         // Find RoundCompletePanel if not assigned
@@ -155,6 +157,9 @@ public class RoundCompleteCutscene : MonoBehaviour
     private IEnumerator PlayCutscene(int roundNumber)
     {
         isCutscenePlaying = true;
+
+        // Re-resolve controls if they were inactive at scene Start (e.g. Mac / delayed XR)
+        RefreshPlayerControlReferences();
         
         // Disable player controls
         DisablePlayerControls();
@@ -215,6 +220,23 @@ public class RoundCompleteCutscene : MonoBehaviour
     }
 
     
+    /// <summary>
+    /// Find movement / grab if not yet bound (inactive-at-Start controllers).
+    /// </summary>
+    private void RefreshPlayerControlReferences()
+    {
+        if (movementController == null)
+        {
+            VRMovementController[] movers = FindObjectsByType<VRMovementController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (movers != null && movers.Length > 0)
+                movementController = movers[0];
+        }
+
+        VRGrabThrow[] found = FindObjectsByType<VRGrabThrow>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        if (found != null && found.Length > 0)
+            grabThrowScripts = found;
+    }
+
     /// <summary>
     /// Disable player controls
     /// </summary>
